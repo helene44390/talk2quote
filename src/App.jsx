@@ -83,15 +83,24 @@ const InputField = ({ label, value, onChange, placeholder, type = 'text', readOn
   </div>
 );
 
-const QuoteLineItem = ({ item, handleItemChange }) => {
+const QuoteLineItem = ({ item, handleItemChange, onDelete }) => {
     const qty = Number(item.qty) || 0;
     const price = Number(item.price) || 0;
     const itemTotal = (qty * price).toFixed(2);
-    
+
     return (
-      <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+      <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 relative">
+        <div
+          onClick={() => onDelete(item.id)}
+          className="absolute top-2 right-2 w-6 h-6 flex items-center justify-center rounded-full bg-red-100 hover:bg-red-200 text-red-600 cursor-pointer transition"
+          role="button"
+          tabIndex={0}
+          title="Delete item"
+        >
+          <X size={14} />
+        </div>
         <textarea
-          className="w-full bg-transparent text-sm font-medium text-gray-800 focus:outline-none mb-2 resize-none"
+          className="w-full bg-transparent text-sm font-medium text-gray-800 focus:outline-none mb-2 resize-none pr-8"
           rows={2}
           value={item.description || ''}
           onChange={(e) => handleItemChange(item.id, 'description', e.target.value)}
@@ -373,7 +382,19 @@ const MainScreen = ({ mockQuote, setMockQuote, isClientInfoSet, handleRecordTogg
     </div>
 );
 
-const ReviewScreen = ({ mockQuote, setMockQuote, handleItemChange, navigateTo, handleQuoteSent }) => (
+const ReviewScreen = ({ mockQuote, setMockQuote, handleItemChange, navigateTo, handleQuoteSent }) => {
+  const handleDeleteItem = (itemId) => {
+    const newItems = mockQuote.items.filter(item => item.id !== itemId);
+    setMockQuote({...mockQuote, items: newItems});
+  };
+
+  const handleAddItem = () => {
+    const newId = mockQuote.items.length > 0 ? Math.max(...mockQuote.items.map(i => i.id)) + 1 : 1;
+    const newItem = { id: newId, description: 'New Item', qty: 1, price: 0 };
+    setMockQuote({...mockQuote, items: [...mockQuote.items, newItem]});
+  };
+
+  return (
     <div className="p-4 bg-gray-50 h-full overflow-y-auto pb-20">
       <div className="flex justify-between items-center mb-2">
           <h2 className="text-xl font-bold text-blue-700">Quote Review</h2>
@@ -407,7 +428,7 @@ const ReviewScreen = ({ mockQuote, setMockQuote, handleItemChange, navigateTo, h
         </div>
 
         <div className="space-y-2 pb-3 border-b">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Scope Summary (AI Generated)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Scope Summary (From Transcript)</label>
             <textarea
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-gray-700 resize-y min-h-[100px]"
                 value={mockQuote.scopeSummary || ''}
@@ -416,17 +437,22 @@ const ReviewScreen = ({ mockQuote, setMockQuote, handleItemChange, navigateTo, h
         </div>
 
         <div className="space-y-4">
-          <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Line Items (AI Extracted)</h3>
+          <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Line Items (From Audio Transcript)</h3>
           {mockQuote.items && mockQuote.items.length > 0 ? (
             mockQuote.items.map((item) => (
-                <QuoteLineItem key={item.id} item={item} handleItemChange={handleItemChange} />
+                <QuoteLineItem key={item.id} item={item} handleItemChange={handleItemChange} onDelete={handleDeleteItem} />
             ))
           ) : (
             <p className="text-gray-500 italic p-4 bg-gray-100 rounded-lg">No line items generated yet. Record a job description to generate items.</p>
           )}
-          <button className="text-blue-500 hover:text-blue-700 text-sm font-semibold flex items-center pt-2">
+          <div
+            onClick={handleAddItem}
+            className="text-blue-500 hover:text-blue-700 text-sm font-semibold flex items-center pt-2 cursor-pointer"
+            role="button"
+            tabIndex={0}
+          >
               <Pencil size={16} className="mr-1"/> Add Item
-          </button>
+          </div>
         </div>
 
         <div className="pt-4 border-t flex justify-between items-center">
@@ -450,7 +476,8 @@ const ReviewScreen = ({ mockQuote, setMockQuote, handleItemChange, navigateTo, h
         </button>
       </div>
     </div>
-);
+  );
+};
 
 const PdfPreviewScreen = ({ mockQuote, companyDetails, navigateTo, handleQuoteSent }) => {
     const handlePrint = () => {
@@ -598,24 +625,37 @@ const PdfPreviewScreen = ({ mockQuote, companyDetails, navigateTo, handleQuoteSe
         {/* CSS for printing - Ensures only the document prints */}
         <style>{`
             @media print {
+                @page {
+                    margin: 0.5in;
+                    size: A4;
+                }
+                body {
+                    margin: 0;
+                    padding: 0;
+                }
                 body * {
                     visibility: hidden;
                 }
-                .fixed.inset-0.bg-gray-900 {
-                    position: static;
-                    background: white;
-                }
-                .bg-white.w-full.max-w-\\[595px\\], .bg-white.w-full.max-w-\\[595px\\] * {
-                    visibility: visible;
+                .bg-white.w-full.max-w-\\[595px\\],
+                .bg-white.w-full.max-w-\\[595px\\] * {
+                    visibility: visible !important;
                 }
                 .bg-white.w-full.max-w-\\[595px\\] {
                     position: absolute;
                     left: 0;
                     top: 0;
                     width: 100%;
+                    max-width: 100%;
                     box-shadow: none;
                     margin: 0;
-                    padding: 20px; /* Add some padding for print margins */
+                    padding: 0.5in;
+                    background: white !important;
+                }
+                .bg-gray-50,
+                .bg-blue-50 {
+                    background-color: white !important;
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
                 }
             }
         `}</style>
@@ -728,26 +768,27 @@ const SettingsScreen = () => (
 );
 
 const AccountingScreen = ({ connectedAccountingSoftware, setConnectedAccountingSoftware, user, db, updateWebhookUrl }) => {
-    const [webhookUrl, setWebhookUrl] = useState('');
+    const [email, setEmail] = useState('');
     const [showInputFor, setShowInputFor] = useState(null);
 
     const handleConnect = (softwareId) => {
         setShowInputFor(softwareId);
     };
-    
-    const saveWebhook = async (softwareId) => {
-        if (!webhookUrl) return;
-        // In a real app, we'd save this URL to the user's profile in Firebase
-        // For this demo, we set it in local state to enable the button
+
+    const saveEmail = async (softwareId) => {
+        if (!email || !email.includes('@')) {
+            alert('Please enter a valid email address');
+            return;
+        }
         setConnectedAccountingSoftware(softwareId);
-        await updateWebhookUrl(softwareId, webhookUrl); // Persist to DB
+        await updateWebhookUrl(softwareId, email);
         setShowInputFor(null);
-        alert(`Connected to ${softwareId}! Quotes will now be sent to this integration link.`);
+        alert(`Connected! Quotes will be emailed to: ${email}`);
     };
 
     const handleDisconnect = () => {
         setConnectedAccountingSoftware('');
-        // updateWebhookUrl('', '');
+        setEmail('');
     };
 
     return (
@@ -755,20 +796,19 @@ const AccountingScreen = ({ connectedAccountingSoftware, setConnectedAccountingS
             <h2 className="text-2xl font-bold text-gray-800 mb-4">Accounting Integration</h2>
             <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
                 <p className="text-sm text-blue-700">
-                    <strong>Direct "One-Click" Integration:</strong> Connect your Xero/MYOB via a secure automation link (Webhook). 
-                    This allows you to send quotes directly from this app to your software instantly.
+                    <strong>Simple Email Integration:</strong> Enter your accounting software email address and quotes will be automatically forwarded there. Easy setup, no technical knowledge required.
                 </p>
             </div>
 
             <h3 className="lg font-bold text-gray-700 mb-3">Available Integrations</h3>
             <div className="space-y-3">
                 {[
-                  { id: 'Xero', name: 'Xero', color: 'bg-blue-500', icon: 'X' },
-                  { id: 'QuickBooks', name: 'QuickBooks', color: 'bg-green-600', icon: 'Q' },
-                  { id: 'MYOB', name: 'MYOB', color: 'bg-purple-600', icon: 'M' },
+                  { id: 'Xero', name: 'Xero', color: 'bg-blue-500', icon: 'X', helpText: 'Use your Xero inbox email' },
+                  { id: 'QuickBooks', name: 'QuickBooks', color: 'bg-green-600', icon: 'Q', helpText: 'Use your QuickBooks email' },
+                  { id: 'MYOB', name: 'MYOB', color: 'bg-purple-600', icon: 'M', helpText: 'Use your MYOB inbox email' },
                 ].map(option => (
                     <div key={option.id} className="flex flex-col bg-white rounded-xl shadow-md overflow-hidden">
-                        <div 
+                        <div
                             className={`p-4 flex items-center justify-between transition duration-150 ${connectedAccountingSoftware === option.id ? 'bg-blue-50 border-b border-blue-100' : ''}`}
                         >
                             <div className='flex items-center'>
@@ -781,7 +821,7 @@ const AccountingScreen = ({ connectedAccountingSoftware, setConnectedAccountingS
                                     <button onClick={handleDisconnect} className="text-xs text-red-500 underline">Disconnect</button>
                                 </div>
                             ) : (
-                                <button 
+                                <button
                                     onClick={() => handleConnect(option.id)}
                                     className="text-sm px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-150"
                                 >
@@ -789,28 +829,27 @@ const AccountingScreen = ({ connectedAccountingSoftware, setConnectedAccountingS
                                 </button>
                             )}
                         </div>
-                        
-                        {/* Webhook Input Area */}
+
                         {showInputFor === option.id && (
-                            <div className="p-4 bg-gray-50 border-t border-gray-100 animate-in slide-in-from-top-2">
-                                <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Paste Integration Link (Webhook)</label>
+                            <div className="p-4 bg-gray-50 border-t border-gray-100">
+                                <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Email Address</label>
                                 <div className="flex space-x-2">
-                                    <input 
-                                        type="url" 
-                                        placeholder={`Paste your ${option.name} automation link here...`}
+                                    <input
+                                        type="email"
+                                        placeholder={option.helpText}
                                         className="flex-grow border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                                        value={webhookUrl}
-                                        onChange={(e) => setWebhookUrl(e.target.value)}
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
                                     />
-                                    <button 
-                                        onClick={() => saveWebhook(option.id)}
+                                    <button
+                                        onClick={() => saveEmail(option.id)}
                                         className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-green-700"
                                     >
                                         Save
                                     </button>
                                 </div>
                                 <p className="text-xs text-gray-400 mt-2">
-                                    Don't have a link? <a href="#" className="text-blue-500 underline">Get one from Zapier/Make</a>
+                                    Quotes will be automatically sent to this email address
                                 </p>
                             </div>
                         )}
@@ -828,7 +867,9 @@ const ShareScreen = ({ connectedAccountingSoftware, mockQuote, handleQuoteSent, 
     const shareText = `Here is the quote for ${mockQuote.clientName || 'your project'}. Total: $${calculateQuoteTotal(mockQuote.items).toFixed(2)}`;
 
     const handleShareWhatsApp = () => {
-        const url = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+        const pdfUrl = window.location.origin + '/quote-preview';
+        const message = `${shareText}\n\nView quote: ${pdfUrl}`;
+        const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
         window.open(url, '_blank');
     };
 
@@ -1024,7 +1065,12 @@ const CompanyDetailsScreen = ({ companyDetails, setCompanyDetails }) => {
     );
 };
 
-const SubscriptionScreen = () => (
+const SubscriptionScreen = () => {
+    const handleAddPayment = () => {
+        alert('Payment integration coming soon! This will open a secure payment form to add your card details.');
+    };
+
+    return (
     <div className="p-4 bg-gray-50 h-full overflow-y-auto">
       <h2 className="text-2xl font-bold text-gray-800 mb-2">Subscription</h2>
       <div className="bg-white p-6 rounded-xl shadow-lg border-2 border-blue-100 mb-6">
@@ -1038,7 +1084,12 @@ const SubscriptionScreen = () => (
         <p className="text-gray-600 mb-4">Unlimited quotes and PDF generation.</p>
         <div className="text-3xl font-bold text-gray-900 mb-1">$29.99<span className="text-sm text-gray-500 font-normal">/mo</span></div>
         <p className="text-xs text-gray-400 mb-4">Next billing date: Dec 28, 2025</p>
-        <button className="w-full py-2 bg-gray-100 text-gray-700 font-semibold rounded-lg hover:bg-gray-200">Manage Payment Method</button>
+        <button
+          onClick={handleAddPayment}
+          className="w-full py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 flex items-center justify-center transition"
+        >
+          <CreditCard size={18} className="mr-2"/> Add Payment Method
+        </button>
       </div>
 
       <h3 className="font-bold text-gray-700 mb-3">Plan Usage</h3>
@@ -1053,7 +1104,8 @@ const SubscriptionScreen = () => (
           </div>
       </div>
     </div>
-);
+    );
+};
 
 const MenuDrawer = ({ isMenuOpen, navigateTo, handleLogout }) => (
     <div className={`fixed top-0 left-0 h-full w-64 bg-white shadow-2xl z-50 transform transition-transform duration-300 ${isMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
@@ -1281,7 +1333,7 @@ const App = () => {
   // --- THE AI ENGINE & AUTO-SAVE ---
   const generateQuoteFromAI = async (finalText) => {
     setIsProcessing(true);
-    
+
     if (!finalText || finalText.trim().length < 5) {
         alert("I didn't hear enough detail. Please try recording again.");
         setIsProcessing(false);
@@ -1289,23 +1341,27 @@ const App = () => {
     }
 
     const prompt = `
-      You are an expert trade estimator. 
-      I will give you a voice transcript from a tradesman describing a job.
-      
-      YOUR TASK:
-      1. Create a professional "Scope of Work" summary based on the text.
-      2. Extract a list of line items with estimated prices (in AUD) and quantities.
-      3. Return ONLY valid JSON.
-      
+      You are a precise transcription assistant for trade quotes.
+
+      CRITICAL RULES:
+      1. Convert the speech EXACTLY as spoken into a professional "Scope of Work" format
+      2. DO NOT invent, estimate, or add prices unless specifically mentioned in the audio
+      3. DO NOT invent quantities unless explicitly stated
+      4. ONLY extract line items that were clearly mentioned in the transcript
+      5. If prices/quantities were NOT mentioned, use 0 as placeholder
+      6. Stay faithful to what was actually said - no creativity or assumptions
+
       TRANSCRIPT: "${finalText}"
-      
+
       JSON FORMAT REQUIRED:
       {
-        "scopeSummary": "Professional summary string...",
+        "scopeSummary": "Exact transcription of what was said, formatted professionally",
         "items": [
-          { "id": 1, "description": "Item description", "qty": 1, "price": 100.00 }
+          { "id": 1, "description": "Exactly what was mentioned", "qty": 0, "price": 0 }
         ]
       }
+
+      REMEMBER: If it wasn't said in the audio, don't include it. Accuracy over completeness.
     `;
 
     try {
