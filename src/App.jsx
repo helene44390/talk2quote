@@ -716,7 +716,7 @@ const ReviewScreen = ({ mockQuote, setMockQuote, handleItemChange, navigateTo, h
         </div>
 
         <div className="space-y-4">
-          <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Line Items (From Audio Transcript)</h3>
+          <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Line Items</h3>
           {mockQuote.items && mockQuote.items.length > 0 ? (
             mockQuote.items.map((item) => (
                 <QuoteLineItem key={item.id} item={item} handleItemChange={handleItemChange} onDelete={handleDeleteItem} />
