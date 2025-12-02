@@ -724,52 +724,239 @@ const HistoryScreen = ({ previousQuotes, lastQuoteAccepted, loadingQuotes, onSel
     </div>
 );
 
-const SettingsScreen = () => (
-    <div className="p-4 bg-gray-50 h-full overflow-y-auto">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">Settings</h2>
-        
-        <div className="bg-white rounded-lg shadow-sm divide-y">
-            <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 transition duration-150">
-                <div className="flex items-center">
-                    <User className="text-gray-400 mr-3" size={20}/>
-                    <div>
-                        <p className="font-medium">Profile</p>
-                        <p className="text-xs text-gray-500">John Doe</p>
-                    </div>
-                </div>
-                <ChevronRight className="text-gray-300" size={20}/>
-            </div>
-            <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 transition duration-150">
-                <div className="flex items-center">
-                    <Shield className="text-gray-400 mr-3" size={20}/>
-                    <div>
-                        <p className="font-medium">Security</p>
-                        <p className="text-xs text-gray-500">Password, 2FA</p>
-                    </div>
-                </div>
-                <ChevronRight className="text-gray-300" size={20}/>
-            </div>
-        </div>
+const ProfileScreen = ({ navigateTo, user }) => {
+    const [displayName, setDisplayName] = useState('');
+    const [phoneNumber, setPhoneNumber] = useState('');
 
-        <h3 className="font-bold text-gray-600 mt-6 mb-2 ml-1 text-sm uppercase">Preferences</h3>
-        <div className="bg-white rounded-lg shadow-sm p-4 space-y-4">
-            <div className="flex justify-between items-center">
-                <span>Default Tax Rate (GST)</span>
-                <select className="bg-gray-100 border-none rounded p-1 text-sm focus:ring-blue-500 focus:border-blue-500"><option>10%</option><option>0%</option></select>
+    return (
+        <div className="p-4 bg-gray-50 h-full overflow-y-auto">
+            <div className="flex items-center mb-4">
+                <button onClick={() => navigateTo('settings')} className="p-2 rounded-full hover:bg-gray-200 mr-2">
+                    <ArrowLeft size={20} />
+                </button>
+                <h2 className="text-2xl font-bold text-gray-800">Profile</h2>
             </div>
-            <div className="flex justify-between items-center">
-                <span>Currency</span>
-                <span className="text-gray-500">AUD ($)</span>
+
+            <div className="bg-white rounded-lg shadow-sm p-4 space-y-4">
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input
+                        type="email"
+                        value={user?.email || ''}
+                        disabled
+                        className="w-full p-2 border border-gray-300 rounded bg-gray-100 text-gray-600"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Display Name</label>
+                    <input
+                        type="text"
+                        value={displayName}
+                        onChange={(e) => setDisplayName(e.target.value)}
+                        placeholder="Enter your name"
+                        className="w-full p-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
+                    />
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                    <input
+                        type="tel"
+                        value={phoneNumber}
+                        onChange={(e) => setPhoneNumber(e.target.value)}
+                        placeholder="Enter phone number"
+                        className="w-full p-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
+                    />
+                </div>
+
+                <button className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-150 font-semibold">
+                    Save Changes
+                </button>
             </div>
-            <div className="flex justify-between items-center">
-                <span>Push Notifications</span>
-                <div className="w-10 h-6 bg-green-500 rounded-full relative cursor-pointer p-0.5 transition duration-200">
-                    <div className="w-5 h-5 bg-white rounded-full shadow-md transform translate-x-4 transition duration-200"></div>
+        </div>
+    );
+};
+
+const SecurityScreen = ({ navigateTo, user }) => {
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+
+    const handlePasswordChange = () => {
+        if (!currentPassword || !newPassword || !confirmPassword) {
+            alert('Please fill in all fields');
+            return;
+        }
+        if (newPassword !== confirmPassword) {
+            alert('New passwords do not match');
+            return;
+        }
+        alert('Password change functionality will be implemented');
+    };
+
+    const handlePasswordReset = async () => {
+        if (user?.email) {
+            try {
+                await sendPasswordResetEmail(auth, user.email);
+                alert(`Password reset email sent to ${user.email}`);
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            }
+        }
+    };
+
+    return (
+        <div className="p-4 bg-gray-50 h-full overflow-y-auto">
+            <div className="flex items-center mb-4">
+                <button onClick={() => navigateTo('settings')} className="p-2 rounded-full hover:bg-gray-200 mr-2">
+                    <ArrowLeft size={20} />
+                </button>
+                <h2 className="text-2xl font-bold text-gray-800">Security</h2>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-sm p-4 space-y-4 mb-4">
+                <h3 className="font-semibold text-gray-800">Change Password</h3>
+
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Current Password</label>
+                    <input
+                        type="password"
+                        value={currentPassword}
+                        onChange={(e) => setCurrentPassword(e.target.value)}
+                        placeholder="Enter current password"
+                        className="w-full p-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
+                    />
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
+                    <input
+                        type="password"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="Enter new password"
+                        className="w-full p-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
+                    />
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Confirm New Password</label>
+                    <input
+                        type="password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="Confirm new password"
+                        className="w-full p-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
+                    />
+                </div>
+
+                <button
+                    onClick={handlePasswordChange}
+                    className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-150 font-semibold"
+                >
+                    Update Password
+                </button>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-sm p-4">
+                <h3 className="font-semibold text-gray-800 mb-2">Password Reset</h3>
+                <p className="text-sm text-gray-600 mb-3">Send a password reset email to {user?.email}</p>
+                <button
+                    onClick={handlePasswordReset}
+                    className="w-full bg-gray-200 text-gray-800 py-2 px-4 rounded-lg hover:bg-gray-300 transition duration-150 font-semibold"
+                >
+                    Send Reset Email
+                </button>
+            </div>
+        </div>
+    );
+};
+
+const SettingsScreen = ({ navigateTo, user }) => {
+    const [taxRate, setTaxRate] = useState('10');
+    const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+
+    const handleProfileClick = () => {
+        navigateTo('profile');
+    };
+
+    const handleSecurityClick = () => {
+        navigateTo('security');
+    };
+
+    const handleTaxRateChange = (e) => {
+        setTaxRate(e.target.value);
+    };
+
+    const toggleNotifications = () => {
+        setNotificationsEnabled(!notificationsEnabled);
+    };
+
+    return (
+        <div className="p-4 bg-gray-50 h-full overflow-y-auto">
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">Settings</h2>
+
+            <div className="bg-white rounded-lg shadow-sm divide-y">
+                <div
+                    onClick={handleProfileClick}
+                    className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 transition duration-150"
+                >
+                    <div className="flex items-center">
+                        <User className="text-gray-400 mr-3" size={20}/>
+                        <div>
+                            <p className="font-medium">Profile</p>
+                            <p className="text-xs text-gray-500">{user?.email || 'User'}</p>
+                        </div>
+                    </div>
+                    <ChevronRight className="text-gray-300" size={20}/>
+                </div>
+                <div
+                    onClick={handleSecurityClick}
+                    className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 transition duration-150"
+                >
+                    <div className="flex items-center">
+                        <Shield className="text-gray-400 mr-3" size={20}/>
+                        <div>
+                            <p className="font-medium">Security</p>
+                            <p className="text-xs text-gray-500">Password, Authentication</p>
+                        </div>
+                    </div>
+                    <ChevronRight className="text-gray-300" size={20}/>
+                </div>
+            </div>
+
+            <h3 className="font-bold text-gray-600 mt-6 mb-2 ml-1 text-sm uppercase">Preferences</h3>
+            <div className="bg-white rounded-lg shadow-sm p-4 space-y-4">
+                <div className="flex justify-between items-center">
+                    <span>Default Tax Rate (GST)</span>
+                    <select
+                        value={taxRate}
+                        onChange={handleTaxRateChange}
+                        className="bg-gray-100 border-none rounded p-1 text-sm focus:ring-blue-500 focus:border-blue-500"
+                    >
+                        <option value="10">10%</option>
+                        <option value="0">0%</option>
+                    </select>
+                </div>
+                <div className="flex justify-between items-center">
+                    <span>Currency</span>
+                    <span className="text-gray-500">AUD ($)</span>
+                </div>
+                <div className="flex justify-between items-center">
+                    <span>Push Notifications</span>
+                    <div
+                        onClick={toggleNotifications}
+                        className={`w-10 h-6 rounded-full relative cursor-pointer p-0.5 transition duration-200 ${notificationsEnabled ? 'bg-green-500' : 'bg-gray-300'}`}
+                    >
+                        <div className={`w-5 h-5 bg-white rounded-full shadow-md transform transition duration-200 ${notificationsEnabled ? 'translate-x-4' : 'translate-x-0'}`}></div>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
-);
+    );
+};
 
 const AccountingScreen = ({ connectedAccountingSoftware, setConnectedAccountingSoftware, user, db, updateWebhookUrl }) => {
     const [email, setEmail] = useState('');
@@ -1591,11 +1778,17 @@ const App = () => {
       case 'subscription': 
         content = <SubscriptionScreen />; 
         break;
-      case 'settings': 
-        content = <SettingsScreen />; 
+      case 'settings':
+        content = <SettingsScreen navigateTo={navigateTo} user={user} />;
         break;
-      case 'referral': 
-        content = <ReferralScreen />; 
+      case 'profile':
+        content = <ProfileScreen navigateTo={navigateTo} user={user} />;
+        break;
+      case 'security':
+        content = <SecurityScreen navigateTo={navigateTo} user={user} />;
+        break;
+      case 'referral':
+        content = <ReferralScreen />;
         break; 
       case 'accounting': 
         content = <AccountingScreen 
