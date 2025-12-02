@@ -876,7 +876,7 @@ const PdfPreviewScreen = ({ mockQuote, companyDetails, navigateTo, handleQuoteSe
                         <p className="text-gray-600 text-base">#{mockQuote.id}</p>
                         <p className="text-gray-600 text-base">Date: {mockQuote.date}</p>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right max-w-md">
                         {companyDetails.logoUrl ? (
                            <img src={companyDetails.logoUrl} alt="Company Logo" className="h-20 mx-auto mb-3 object-contain" />
                         ) : (
@@ -884,11 +884,11 @@ const PdfPreviewScreen = ({ mockQuote, companyDetails, navigateTo, handleQuoteSe
                         )}
                         {!companyDetails.logoUrl && <div className="h-2"></div>}
 
-                        <p className="text-gray-600 text-sm">{companyDetails.address || 'Company Address'}</p>
-                        <p className="text-gray-600 text-sm">{companyDetails.email}</p>
-                        <p className="text-gray-600 text-sm">{companyDetails.phone}</p>
-                        <p className="text-gray-600 text-sm">{companyDetails.website}</p>
-                        <p className="text-gray-600 text-sm font-medium">ABN: {companyDetails.abn}</p>
+                        <p className="text-gray-700 text-base leading-relaxed">{companyDetails.address || 'Company Address'}</p>
+                        <p className="text-gray-700 text-base">{companyDetails.email}</p>
+                        <p className="text-gray-700 text-base">{companyDetails.phone}</p>
+                        <p className="text-gray-700 text-base">{companyDetails.website}</p>
+                        <p className="text-gray-700 text-base font-semibold">ABN: {companyDetails.abn}</p>
                     </div>
                 </div>
 
