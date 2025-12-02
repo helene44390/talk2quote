@@ -869,7 +869,7 @@ const PdfPreviewScreen = ({ mockQuote, companyDetails, navigateTo, handleQuoteSe
         {/* Scrollable Content Area */}
         <div className="flex-grow overflow-y-auto p-4 bg-white flex justify-center print:p-0 print:overflow-visible">
             {/* The Actual PDF Document - A4 Aspect Ratio */}
-            <div className="bg-white w-full max-w-[595px] min-h-[842px] p-8 shadow-xl text-xs sm:text-sm print:shadow-none print:w-full print:max-w-none">
+            <div className="bg-white w-full max-w-[595px] h-auto p-8 shadow-xl text-xs sm:text-sm print:shadow-none print:w-full print:max-w-none">
                 <div className="flex justify-between items-start mb-8 border-b pb-4">
                     <div>
                         <h1 className="text-2xl font-bold text-blue-800 mb-2">QUOTE</h1>
