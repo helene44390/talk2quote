@@ -1256,45 +1256,252 @@ const CompanyDetailsScreen = ({ companyDetails, setCompanyDetails }) => {
     );
 };
 
-const SubscriptionScreen = () => {
+const SubscriptionScreen = ({ user, supabase }) => {
+    const [subscription, setSubscription] = useState(null);
+    const [usage, setUsage] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [showCancelModal, setShowCancelModal] = useState(false);
+
+    useEffect(() => {
+        if (user) {
+            fetchSubscriptionData();
+        }
+    }, [user]);
+
+    const fetchSubscriptionData = async () => {
+        try {
+            const { data: subData, error: subError } = await supabase
+                .from('subscriptions')
+                .select('*')
+                .eq('user_id', user.uid)
+                .maybeSingle();
+
+            if (subError) throw subError;
+
+            const { data: usageData, error: usageError } = await supabase
+                .from('subscription_usage')
+                .select('*')
+                .eq('user_id', user.uid)
+                .maybeSingle();
+
+            if (usageError) throw usageError;
+
+            setSubscription(subData || {
+                plan_type: 'free',
+                status: 'active',
+                cancel_at_period_end: false
+            });
+
+            setUsage(usageData || {
+                quotes_generated: 0,
+                storage_used_gb: 0
+            });
+        } catch (error) {
+            console.error('Error fetching subscription:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleAddPayment = () => {
-        alert('Payment integration coming soon! This will open a secure payment form to add your card details.');
+        alert('To set up payments:\n\n1. Create a Stripe account at https://dashboard.stripe.com/register\n2. Get your Stripe secret key from the Developers section\n3. Payment integration will be completed with Stripe\n\nFor now, this is a demo showing the UI.');
+    };
+
+    const handleCancelSubscription = async () => {
+        if (!subscription?.id) {
+            alert('No active subscription found');
+            return;
+        }
+
+        try {
+            const { error } = await supabase
+                .from('subscriptions')
+                .update({
+                    cancel_at_period_end: true,
+                    status: 'canceled'
+                })
+                .eq('id', subscription.id);
+
+            if (error) throw error;
+
+            alert('Your subscription has been canceled. You will retain access until the end of your billing period.');
+            setShowCancelModal(false);
+            fetchSubscriptionData();
+        } catch (error) {
+            console.error('Error canceling subscription:', error);
+            alert('Failed to cancel subscription. Please try again.');
+        }
+    };
+
+    const handleReactivateSubscription = async () => {
+        if (!subscription?.id) return;
+
+        try {
+            const { error } = await supabase
+                .from('subscriptions')
+                .update({
+                    cancel_at_period_end: false,
+                    status: 'active'
+                })
+                .eq('id', subscription.id);
+
+            if (error) throw error;
+
+            alert('Your subscription has been reactivated!');
+            fetchSubscriptionData();
+        } catch (error) {
+            console.error('Error reactivating subscription:', error);
+            alert('Failed to reactivate subscription. Please try again.');
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="p-4 bg-gray-50 h-full flex items-center justify-center">
+                <div className="text-gray-600">Loading subscription...</div>
+            </div>
+        );
+    }
+
+    const planDetails = {
+        free: { name: 'Free Plan', price: '$0', features: '10 quotes per month' },
+        basic: { name: 'Basic Plan', price: '$14.99', features: '100 quotes per month' },
+        pro: { name: 'Pro Plan', price: '$29.99', features: 'Unlimited quotes and PDF generation' }
+    };
+
+    const currentPlan = planDetails[subscription?.plan_type || 'free'];
+    const nextBillingDate = subscription?.current_period_end
+        ? new Date(subscription.current_period_end).toLocaleDateString()
+        : 'N/A';
+
+    const statusColors = {
+        active: 'bg-green-100 text-green-800',
+        canceled: 'bg-red-100 text-red-800',
+        expired: 'bg-gray-100 text-gray-800',
+        past_due: 'bg-yellow-100 text-yellow-800'
     };
 
     return (
-    <div className="p-4 bg-gray-50 h-full overflow-y-auto">
-      <h2 className="text-2xl font-bold text-gray-800 mb-2">Subscription</h2>
-      <div className="bg-white p-6 rounded-xl shadow-lg border-2 border-blue-100 mb-6">
-        <div className="flex justify-between items-start mb-4">
-            <div>
-                <h3 className="text-lg font-bold text-blue-800">Pro Plan</h3>
-                <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full font-bold">Active</span>
-            </div>
-            <Star className="text-yellow-400 fill-current" size={24} />
-        </div>
-        <p className="text-gray-600 mb-4">Unlimited quotes and PDF generation.</p>
-        <div className="text-3xl font-bold text-gray-900 mb-1">$29.99<span className="text-sm text-gray-500 font-normal">/mo</span></div>
-        <p className="text-xs text-gray-400 mb-4">Next billing date: Dec 28, 2025</p>
-        <button
-          onClick={handleAddPayment}
-          className="w-full py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 flex items-center justify-center transition"
-        >
-          <CreditCard size={18} className="mr-2"/> Add Payment Method
-        </button>
-      </div>
+        <div className="p-4 bg-gray-50 h-full overflow-y-auto">
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">Subscription</h2>
 
-      <h3 className="font-bold text-gray-700 mb-3">Plan Usage</h3>
-      <div className="bg-white p-4 rounded-lg shadow-sm space-y-4">
-          <div>
-            <div className="flex justify-between text-sm mb-1"><span>Quotes Generated</span><span className="font-bold">124 / Unlimited</span></div>
-            <div className="w-full bg-gray-200 rounded-full h-2"><div className="bg-blue-600 h-2 rounded-full w-3/4"></div></div>
-          </div>
-          <div>
-            <div className="flex justify-between text-sm mb-1"><span>Cloud Storage</span><span className="font-bold">2.1GB / 10GB</span></div>
-            <div className="w-full bg-gray-200 rounded-full h-2"><div className="bg-purple-600 h-2 rounded-full w-1/4"></div></div>
-          </div>
-      </div>
-    </div>
+            <div className="bg-white p-6 rounded-xl shadow-lg border-2 border-blue-100 mb-6">
+                <div className="flex justify-between items-start mb-4">
+                    <div>
+                        <h3 className="text-lg font-bold text-blue-800">{currentPlan.name}</h3>
+                        <span className={`text-xs px-2 py-1 rounded-full font-bold ${statusColors[subscription?.status || 'active']}`}>
+                            {subscription?.status?.toUpperCase() || 'ACTIVE'}
+                        </span>
+                        {subscription?.cancel_at_period_end && (
+                            <div className="text-xs text-red-600 mt-1">
+                                Cancels on {nextBillingDate}
+                            </div>
+                        )}
+                    </div>
+                    <Star className="text-yellow-400 fill-current" size={24} />
+                </div>
+
+                <p className="text-gray-600 mb-4">{currentPlan.features}</p>
+
+                <div className="text-3xl font-bold text-gray-900 mb-1">
+                    {currentPlan.price}
+                    <span className="text-sm text-gray-500 font-normal">/mo</span>
+                </div>
+
+                {subscription?.plan_type !== 'free' && (
+                    <p className="text-xs text-gray-400 mb-4">Next billing date: {nextBillingDate}</p>
+                )}
+
+                {subscription?.payment_method_last4 && (
+                    <div className="bg-gray-50 p-3 rounded-lg mb-4">
+                        <div className="text-sm text-gray-600">
+                            Payment Method: {subscription.payment_method_brand} •••• {subscription.payment_method_last4}
+                        </div>
+                    </div>
+                )}
+
+                <button
+                    onClick={handleAddPayment}
+                    className="w-full py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 flex items-center justify-center transition mb-3"
+                >
+                    <CreditCard size={18} className="mr-2"/>
+                    {subscription?.payment_method_last4 ? 'Update Payment Method' : 'Add Payment Method'}
+                </button>
+
+                {subscription?.plan_type !== 'free' && subscription?.status === 'active' && !subscription?.cancel_at_period_end && (
+                    <button
+                        onClick={() => setShowCancelModal(true)}
+                        className="w-full py-3 bg-red-50 text-red-600 font-semibold rounded-lg hover:bg-red-100 transition"
+                    >
+                        Cancel Subscription
+                    </button>
+                )}
+
+                {subscription?.cancel_at_period_end && (
+                    <button
+                        onClick={handleReactivateSubscription}
+                        className="w-full py-3 bg-green-50 text-green-600 font-semibold rounded-lg hover:bg-green-100 transition"
+                    >
+                        Reactivate Subscription
+                    </button>
+                )}
+            </div>
+
+            <h3 className="font-bold text-gray-700 mb-3">Plan Usage</h3>
+            <div className="bg-white p-4 rounded-lg shadow-sm space-y-4">
+                <div>
+                    <div className="flex justify-between text-sm mb-1">
+                        <span>Quotes Generated</span>
+                        <span className="font-bold">
+                            {usage?.quotes_generated || 0} / {subscription?.plan_type === 'pro' ? 'Unlimited' : subscription?.plan_type === 'basic' ? '100' : '10'}
+                        </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                            className="bg-blue-600 h-2 rounded-full"
+                            style={{ width: subscription?.plan_type === 'pro' ? '75%' : `${Math.min((usage?.quotes_generated || 0) / (subscription?.plan_type === 'basic' ? 100 : 10) * 100, 100)}%` }}
+                        ></div>
+                    </div>
+                </div>
+                <div>
+                    <div className="flex justify-between text-sm mb-1">
+                        <span>Cloud Storage</span>
+                        <span className="font-bold">{(usage?.storage_used_gb || 0).toFixed(1)}GB / 10GB</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                            className="bg-purple-600 h-2 rounded-full"
+                            style={{ width: `${Math.min((usage?.storage_used_gb || 0) / 10 * 100, 100)}%` }}
+                        ></div>
+                    </div>
+                </div>
+            </div>
+
+            {showCancelModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white p-6 rounded-xl shadow-2xl max-w-md w-full mx-4">
+                        <h3 className="text-xl font-bold text-gray-800 mb-3">Cancel Subscription?</h3>
+                        <p className="text-gray-600 mb-4">
+                            Are you sure you want to cancel your subscription? You will retain access until {nextBillingDate}.
+                        </p>
+                        <div className="flex space-x-3">
+                            <button
+                                onClick={() => setShowCancelModal(false)}
+                                className="flex-1 py-2 px-4 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300 transition"
+                            >
+                                Keep Subscription
+                            </button>
+                            <button
+                                onClick={handleCancelSubscription}
+                                className="flex-1 py-2 px-4 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
     );
 };
 
@@ -1775,8 +1982,8 @@ const App = () => {
             setCompanyDetails={setCompanyDetails} 
         />; 
         break;
-      case 'subscription': 
-        content = <SubscriptionScreen />; 
+      case 'subscription':
+        content = <SubscriptionScreen user={user} supabase={db} />;
         break;
       case 'settings':
         content = <SettingsScreen navigateTo={navigateTo} user={user} />;
