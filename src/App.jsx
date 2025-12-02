@@ -1535,7 +1535,7 @@ const SubscriptionScreen = ({ user, supabase }) => {
     }
 
     const planDetails = {
-        trial: { name: 'Free Trial', price: '$0', features: '10 quotes to try the service' },
+        trial: { name: 'Free Trial', price: '$0', features: '10 professional quotes to experience the power of voice-to-quote' },
         pro: { name: 'Pro Plan', price: '$29', features: 'Unlimited quotes, PDF generation, and all features' }
     };
 
