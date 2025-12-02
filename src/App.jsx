@@ -331,22 +331,18 @@ const MainScreen = ({ mockQuote, setMockQuote, isClientInfoSet, handleRecordTogg
     <div className="flex flex-col h-full p-4 bg-gray-50">
       <div className="text-center mb-6">
         <h2 className="text-2xl font-bold text-gray-800 mb-1">Create a Quote</h2>
-        <p className="text-sm text-gray-500 mb-2">Start by entering the client's essential details.</p>
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-left">
-          <p className="text-xs text-blue-800 font-medium mb-1">Quick tip:</p>
-          <p className="text-xs text-blue-700">Speak clearly and include all necessary details: client name, job address, scope of work, quantities, and pricing. The more detail you provide, the better your quote will be!</p>
-        </div>
+        <p className="text-sm text-gray-500">Start by entering the client's essential details.</p>
       </div>
 
       <div className="mb-8 p-4 bg-white rounded-xl shadow-lg border border-gray-100 space-y-4">
         <h3 className="text-lg font-semibold text-blue-700 mb-3">Client Details</h3>
-        <InputField 
+        <InputField
             label="Client Name (Optional)"
             value={mockQuote.clientName}
             onChange={(e) => setMockQuote({...mockQuote, clientName: e.target.value})}
             placeholder="e.g. Sarah Jenkins"
         />
-        <InputField 
+        <InputField
             label="Client Email (Required)"
             type="email"
             value={mockQuote.clientEmail}
@@ -361,6 +357,11 @@ const MainScreen = ({ mockQuote, setMockQuote, isClientInfoSet, handleRecordTogg
                 <p className="text-sm text-red-700 font-semibold">Please enter the Client Email to enable recording.</p>
             )}
         </div>
+      </div>
+
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-6">
+        <p className="text-xs text-blue-800 font-medium mb-1">Quick tip:</p>
+        <p className="text-xs text-blue-700">Speak clearly and include all necessary details: client name, job address, scope of work, quantities, and pricing. The more detail you provide, the better your quote will be!</p>
       </div>
       
       <div className="flex flex-col justify-center items-center mt-auto mb-8 mx-auto">
