@@ -1108,9 +1108,9 @@ const AccountingScreen = ({ user, supabase }) => {
     }
 
     const providers = [
-        { id: 'xero', name: 'Xero', color: 'bg-blue-500', description: 'Direct API connection to Xero' },
-        { id: 'quickbooks', name: 'QuickBooks', color: 'bg-green-600', description: 'Direct API connection to QuickBooks' },
-        { id: 'myob', name: 'MYOB', color: 'bg-red-600', description: 'Direct API connection to MYOB' },
+        { id: 'xero', name: 'Xero', logo: '/Xero logo.jpg', description: 'Direct API connection to Xero' },
+        { id: 'quickbooks', name: 'QuickBooks', logo: '/Quickbooks logo.jpg', description: 'Direct API connection to QuickBooks' },
+        { id: 'myob', name: 'MYOB', logo: '/MYOB logo.jpg', description: 'Direct API connection to MYOB' },
     ];
 
     return (
@@ -1133,10 +1133,8 @@ const AccountingScreen = ({ user, supabase }) => {
                             <div className={`p-4 ${isConnected ? 'bg-blue-50 border-b border-blue-100' : ''}`}>
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center">
-                                        <div className={`w-10 h-10 flex items-center justify-center rounded-lg text-white font-bold mr-4 ${provider.color}`}>
-                                            {provider.id === 'xero' && <span className="text-xl">X</span>}
-                                            {provider.id === 'quickbooks' && <span className="text-xl">Q</span>}
-                                            {provider.id === 'myob' && <span className="text-xl">M</span>}
+                                        <div className="w-12 h-12 flex items-center justify-center rounded-lg mr-4 bg-white border border-gray-200 p-1">
+                                            <img src={provider.logo} alt={`${provider.name} logo`} className="w-full h-full object-contain" />
                                         </div>
                                         <div>
                                             <div className="font-semibold text-gray-800">{provider.name}</div>
