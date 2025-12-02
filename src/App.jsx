@@ -1535,12 +1535,11 @@ const SubscriptionScreen = ({ user, supabase }) => {
     }
 
     const planDetails = {
-        free: { name: 'Free Plan', price: '$0', features: '10 quotes per month' },
-        basic: { name: 'Basic Plan', price: '$14.99', features: '100 quotes per month' },
-        pro: { name: 'Pro Plan', price: '$29.99', features: 'Unlimited quotes and PDF generation' }
+        trial: { name: 'Free Trial', price: '$0', features: '10 quotes to try the service' },
+        pro: { name: 'Pro Plan', price: '$29', features: 'Unlimited quotes, PDF generation, and all features' }
     };
 
-    const currentPlan = planDetails[subscription?.plan_type || 'free'];
+    const currentPlan = planDetails[subscription?.plan_type || 'trial'];
     const nextBillingDate = subscription?.current_period_end
         ? new Date(subscription.current_period_end).toLocaleDateString()
         : 'N/A';
@@ -1576,11 +1575,19 @@ const SubscriptionScreen = ({ user, supabase }) => {
 
                 <div className="text-3xl font-bold text-gray-900 mb-1">
                     {currentPlan.price}
-                    <span className="text-sm text-gray-500 font-normal">/mo</span>
+                    {subscription?.plan_type !== 'trial' && <span className="text-sm text-gray-500 font-normal">/mo</span>}
                 </div>
 
-                {subscription?.plan_type !== 'free' && (
+                {subscription?.plan_type === 'pro' && (
                     <p className="text-xs text-gray-400 mb-4">Next billing date: {nextBillingDate}</p>
+                )}
+
+                {subscription?.plan_type === 'trial' && (
+                    <div className="bg-blue-50 border-l-4 border-blue-500 p-3 rounded mb-4">
+                        <p className="text-sm text-blue-700">
+                            <strong>Free Trial Active!</strong> You have {10 - (usage?.quotes_generated || 0)} quotes remaining. Upgrade to Pro for unlimited quotes.
+                        </p>
+                    </div>
                 )}
 
                 {subscription?.payment_method_last4 && (
@@ -1591,15 +1598,25 @@ const SubscriptionScreen = ({ user, supabase }) => {
                     </div>
                 )}
 
-                <button
-                    onClick={handleAddPayment}
-                    className="w-full py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 flex items-center justify-center transition mb-3"
-                >
-                    <CreditCard size={18} className="mr-2"/>
-                    {subscription?.payment_method_last4 ? 'Update Payment Method' : 'Add Payment Method'}
-                </button>
+                {subscription?.plan_type === 'trial' ? (
+                    <button
+                        onClick={handleAddPayment}
+                        className="w-full py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-bold rounded-lg hover:from-blue-700 hover:to-blue-800 flex items-center justify-center transition shadow-lg"
+                    >
+                        <Star size={18} className="mr-2"/>
+                        Upgrade to Pro - $29/month
+                    </button>
+                ) : (
+                    <button
+                        onClick={handleAddPayment}
+                        className="w-full py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 flex items-center justify-center transition mb-3"
+                    >
+                        <CreditCard size={18} className="mr-2"/>
+                        {subscription?.payment_method_last4 ? 'Update Payment Method' : 'Add Payment Method'}
+                    </button>
+                )}
 
-                {subscription?.plan_type !== 'free' && subscription?.status === 'active' && !subscription?.cancel_at_period_end && (
+                {subscription?.plan_type === 'pro' && subscription?.status === 'active' && !subscription?.cancel_at_period_end && (
                     <button
                         onClick={() => setShowCancelModal(true)}
                         className="w-full py-3 bg-red-50 text-red-600 font-semibold rounded-lg hover:bg-red-100 transition"
@@ -1624,13 +1641,13 @@ const SubscriptionScreen = ({ user, supabase }) => {
                     <div className="flex justify-between text-sm mb-1">
                         <span>Quotes Generated</span>
                         <span className="font-bold">
-                            {usage?.quotes_generated || 0} / {subscription?.plan_type === 'pro' ? 'Unlimited' : subscription?.plan_type === 'basic' ? '100' : '10'}
+                            {usage?.quotes_generated || 0} / {subscription?.plan_type === 'pro' ? 'Unlimited' : '10'}
                         </span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
                         <div
                             className="bg-blue-600 h-2 rounded-full"
-                            style={{ width: subscription?.plan_type === 'pro' ? '75%' : `${Math.min((usage?.quotes_generated || 0) / (subscription?.plan_type === 'basic' ? 100 : 10) * 100, 100)}%` }}
+                            style={{ width: subscription?.plan_type === 'pro' ? '75%' : `${Math.min((usage?.quotes_generated || 0) / 10 * 100, 100)}%` }}
                         ></div>
                     </div>
                 </div>
