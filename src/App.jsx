@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { initializeApp } from "firebase/app";
 import { getAuth, signInAnonymously, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, setPersistence, browserLocalPersistence, signInWithCustomToken } from "firebase/auth";
 import { getFirestore, collection, addDoc, onSnapshot, query, doc, updateDoc, setDoc, getDoc } from "firebase/firestore";
+import { createClient } from '@supabase/supabase-js';
 import {
   Menu, Mic, Settings, History, DollarSign, Building, Check, Share2, Mail, MessageSquare, List,
   Home, User, CreditCard, Save, Pencil, Phone, FileText, X, ChevronRight, Star, Shield, Gift, TrendingUp, Loader, LogOut, Lock, ArrowLeft, Printer, Upload, Download, Globe, MapPin
@@ -24,6 +25,10 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 const APP_ID = 'talk2quote-v1';
 const DEFAULT_LOGO_URL = "https://placehold.co/600x150/e2e8f0/475569?text=Your+Logo&font=roboto";
@@ -182,6 +187,7 @@ const LoginScreen = ({ handleLogin, handleSignUp, handlePasswordReset }) => {
     const [successMsg, setSuccessMsg] = useState('');
     const [loading, setLoading] = useState(false);
     const [isResetting, setIsResetting] = useState(false);
+    const [isSigningUp, setIsSigningUp] = useState(false);
 
     const onLogin = async (e) => {
         e.preventDefault();
@@ -203,23 +209,9 @@ const LoginScreen = ({ handleLogin, handleSignUp, handlePasswordReset }) => {
         }
     };
 
-    const onSignUp = async (e) => {
-        e.preventDefault();
-        if (!email || !password) { setError("Please enter email and password."); return; }
-        if (password.length < 6) { setError("Password must be at least 6 characters."); return; }
-        setLoading(true);
+    const showSignUpScreen = () => {
+        setIsSigningUp(true);
         setError('');
-        try {
-            await handleSignUp(email, password);
-        } catch (err) {
-            console.log("Signup error handled:", err.code);
-            if (err.code === 'auth/email-already-in-use') {
-                setError("This email is already registered. Please use 'Sign In' instead.");
-            } else {
-                setError("Could not create account: " + err.message.replace("Firebase: ", ""));
-            }
-            setLoading(false);
-        }
     };
 
     const onReset = async (e) => {
@@ -241,6 +233,10 @@ const LoginScreen = ({ handleLogin, handleSignUp, handlePasswordReset }) => {
         }
         setLoading(false);
     };
+
+    if (isSigningUp) {
+        return <SignUpScreen handleSignUp={handleSignUp} onBack={() => setIsSigningUp(false)} />;
+    }
 
     if (isResetting) {
         return (
@@ -318,10 +314,284 @@ const LoginScreen = ({ handleLogin, handleSignUp, handlePasswordReset }) => {
                         <span className="flex-shrink-0 mx-4 text-gray-400 text-xs">New User?</span>
                         <div className="flex-grow border-t border-gray-300"></div>
                     </div>
-                    <button onClick={onSignUp} disabled={loading} className="w-full py-3 text-lg font-semibold text-blue-600 bg-white border-2 border-blue-600 rounded-lg hover:bg-blue-50">
+                    <button onClick={showSignUpScreen} disabled={loading} className="w-full py-3 text-lg font-semibold text-blue-600 bg-white border-2 border-blue-600 rounded-lg hover:bg-blue-50">
                         Create Account
                     </button>
                 </div>
+            </div>
+        </div>
+    );
+};
+
+const SignUpScreen = ({ handleSignUp, onBack }) => {
+    const [formData, setFormData] = useState({
+        email: '',
+        password: '',
+        confirmPassword: '',
+        cardNumber: '',
+        cardExpiry: '',
+        cardCVC: '',
+        cardName: '',
+        reminderEmail: false,
+        termsAccepted: false,
+        autoChargeConsent: false
+    });
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
+
+    const handleChange = (field, value) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
+        setError('');
+    };
+
+    const formatCardNumber = (value) => {
+        const numbers = value.replace(/\D/g, '');
+        const groups = numbers.match(/.{1,4}/g) || [];
+        return groups.join(' ').substring(0, 19);
+    };
+
+    const formatExpiry = (value) => {
+        const numbers = value.replace(/\D/g, '');
+        if (numbers.length >= 2) {
+            return numbers.substring(0, 2) + (numbers.length > 2 ? '/' + numbers.substring(2, 4) : '');
+        }
+        return numbers;
+    };
+
+    const onSubmit = async (e) => {
+        e.preventDefault();
+
+        if (!formData.email || !formData.password) {
+            setError('Please enter email and password.');
+            return;
+        }
+
+        if (formData.password.length < 6) {
+            setError('Password must be at least 6 characters.');
+            return;
+        }
+
+        if (formData.password !== formData.confirmPassword) {
+            setError('Passwords do not match.');
+            return;
+        }
+
+        if (!formData.cardNumber || formData.cardNumber.replace(/\s/g, '').length < 13) {
+            setError('Please enter a valid card number.');
+            return;
+        }
+
+        if (!formData.cardExpiry || formData.cardExpiry.length < 5) {
+            setError('Please enter a valid expiry date (MM/YY).');
+            return;
+        }
+
+        if (!formData.cardCVC || formData.cardCVC.length < 3) {
+            setError('Please enter a valid CVC code.');
+            return;
+        }
+
+        if (!formData.cardName) {
+            setError('Please enter the cardholder name.');
+            return;
+        }
+
+        if (!formData.termsAccepted) {
+            setError('Please accept the terms and conditions.');
+            return;
+        }
+
+        if (!formData.autoChargeConsent) {
+            setError('Please consent to be charged after using all free trial quotes.');
+            return;
+        }
+
+        setLoading(true);
+        setError('');
+
+        try {
+            await handleSignUp(formData.email, formData.password);
+
+            const user = auth.currentUser;
+            if (user) {
+                const cardNumberClean = formData.cardNumber.replace(/\s/g, '');
+                const last4 = cardNumberClean.slice(-4);
+                const expiryParts = formData.cardExpiry.split('/');
+
+                await supabase.from('user_registration_data').insert({
+                    user_id: user.uid,
+                    card_number_last4: last4,
+                    card_brand: 'Visa',
+                    card_expiry_month: parseInt(expiryParts[0]),
+                    card_expiry_year: parseInt('20' + expiryParts[1]),
+                    reminder_email_opt_in: formData.reminderEmail,
+                    terms_accepted: formData.termsAccepted,
+                    auto_charge_consent: formData.autoChargeConsent
+                });
+            }
+        } catch (err) {
+            console.log('Signup error:', err);
+            if (err.code === 'auth/email-already-in-use') {
+                setError('This email is already registered. Please use Sign In instead.');
+            } else {
+                setError('Could not create account: ' + err.message.replace('Firebase: ', ''));
+            }
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-6">
+            <div className="w-full max-w-md p-8 space-y-6 bg-white shadow-xl rounded-xl">
+                <div className="flex items-center text-blue-600 mb-2 cursor-pointer" onClick={onBack}>
+                    <ArrowLeft size={20} className="mr-2"/> Back to Login
+                </div>
+
+                <div>
+                    <h2 className="text-2xl font-bold text-gray-800">Create Account</h2>
+                    <p className="text-gray-500 text-sm mt-1">Start your free trial - 10 professional quotes</p>
+                </div>
+
+                {error && <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg border border-red-200">{error}</div>}
+
+                <form onSubmit={onSubmit} className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                        <input
+                            type="email"
+                            value={formData.email}
+                            onChange={(e) => handleChange('email', e.target.value)}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="your@email.com"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                        <input
+                            type="password"
+                            value={formData.password}
+                            onChange={(e) => handleChange('password', e.target.value)}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="At least 6 characters"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
+                        <input
+                            type="password"
+                            value={formData.confirmPassword}
+                            onChange={(e) => handleChange('confirmPassword', e.target.value)}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="Re-enter password"
+                        />
+                    </div>
+
+                    <div className="pt-4 border-t border-gray-200">
+                        <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                            <CreditCard size={16} className="mr-2"/>
+                            Payment Information
+                        </h3>
+                        <p className="text-xs text-gray-500 mb-4">Your card will be charged $29/month after your 10 free trial quotes are used.</p>
+
+                        <div className="space-y-3">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Card Number</label>
+                                <input
+                                    type="text"
+                                    value={formData.cardNumber}
+                                    onChange={(e) => handleChange('cardNumber', formatCardNumber(e.target.value))}
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                                    placeholder="1234 5678 9012 3456"
+                                    maxLength="19"
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Expiry</label>
+                                    <input
+                                        type="text"
+                                        value={formData.cardExpiry}
+                                        onChange={(e) => handleChange('cardExpiry', formatExpiry(e.target.value))}
+                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                                        placeholder="MM/YY"
+                                        maxLength="5"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">CVC</label>
+                                    <input
+                                        type="text"
+                                        value={formData.cardCVC}
+                                        onChange={(e) => handleChange('cardCVC', e.target.value.replace(/\D/g, '').substring(0, 4))}
+                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                                        placeholder="123"
+                                        maxLength="4"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Cardholder Name</label>
+                                <input
+                                    type="text"
+                                    value={formData.cardName}
+                                    onChange={(e) => handleChange('cardName', e.target.value)}
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                                    placeholder="Name on card"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="pt-4 space-y-3">
+                        <label className="flex items-start cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={formData.reminderEmail}
+                                onChange={(e) => handleChange('reminderEmail', e.target.checked)}
+                                className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                            />
+                            <span className="ml-3 text-sm text-gray-700">
+                                Send me a reminder email when my free trial is ending
+                            </span>
+                        </label>
+
+                        <label className="flex items-start cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={formData.termsAccepted}
+                                onChange={(e) => handleChange('termsAccepted', e.target.checked)}
+                                className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                            />
+                            <span className="ml-3 text-sm text-gray-700">
+                                I agree to the <span className="text-blue-600 underline">Terms and Conditions</span>
+                            </span>
+                        </label>
+
+                        <label className="flex items-start cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={formData.autoChargeConsent}
+                                onChange={(e) => handleChange('autoChargeConsent', e.target.checked)}
+                                className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                            />
+                            <span className="ml-3 text-sm text-gray-700">
+                                I consent to be automatically charged $29/month after using all 10 free trial quotes
+                            </span>
+                        </label>
+                    </div>
+
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full py-3 text-lg font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-md flex justify-center items-center mt-6"
+                    >
+                        {loading ? <Loader className="animate-spin" size={24}/> : 'Create Account & Start Free Trial'}
+                    </button>
+                </form>
             </div>
         </div>
     );
