@@ -1133,8 +1133,8 @@ const AccountingScreen = ({ user, supabase }) => {
                             <div className={`p-4 ${isConnected ? 'bg-blue-50 border-b border-blue-100' : ''}`}>
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center">
-                                        <div className="w-12 h-12 flex items-center justify-center rounded-lg mr-4 bg-white border border-gray-200 p-1">
-                                            <img src={provider.logo} alt={`${provider.name} logo`} className="w-full h-full object-contain" />
+                                        <div className="w-12 h-12 flex items-center justify-center rounded-lg mr-4 bg-white border border-gray-200 p-2">
+                                            <img src={provider.logo} alt={`${provider.name} logo`} className="w-full h-full object-contain" style={{ backgroundColor: 'white' }} />
                                         </div>
                                         <div>
                                             <div className="font-semibold text-gray-800">{provider.name}</div>
