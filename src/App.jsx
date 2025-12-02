@@ -10,7 +10,7 @@ import {
 
 // --- CONFIGURATION ---
 
-const API_KEY = "AIzaSyCmFx-cWKIZXFcYQHtvGkj-yqDFV-XtCMk";
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "AIzaSyCmFx-cWKIZXFcYQHtvGkj-yqDFV-XtCMk";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCz6yEiW0VhnNliNFsH0y-9DSL2yRc081c",
@@ -690,7 +690,7 @@ const ReviewScreen = ({ mockQuote, setMockQuote, handleItemChange, navigateTo, h
       const prompt = `Rewrite the following job scope summary to be more professional, clear, and comprehensive. Keep all important details but improve the structure and language:\n\n${mockQuote.scopeSummary}`;
 
       console.log('Calling AI API...');
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${API_KEY}`, {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -2311,7 +2311,7 @@ const App = () => {
     `;
 
     try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${API_KEY}`, {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
