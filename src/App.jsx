@@ -678,7 +678,10 @@ const ReviewScreen = ({ mockQuote, setMockQuote, handleItemChange, navigateTo, h
   };
 
   const handleAiRewrite = async () => {
-    if (!mockQuote.scopeSummary) return;
+    if (!mockQuote.scopeSummary) {
+      alert('No scope summary to rewrite.');
+      return;
+    }
 
     setIsRewriting(true);
     setOriginalSummary(mockQuote.scopeSummary);
@@ -686,6 +689,7 @@ const ReviewScreen = ({ mockQuote, setMockQuote, handleItemChange, navigateTo, h
     try {
       const prompt = `Rewrite the following job scope summary to be more professional, clear, and comprehensive. Keep all important details but improve the structure and language:\n\n${mockQuote.scopeSummary}`;
 
+      console.log('Calling AI API...');
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${API_KEY}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -694,16 +698,25 @@ const ReviewScreen = ({ mockQuote, setMockQuote, handleItemChange, navigateTo, h
         })
       });
 
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status} ${response.statusText}`);
+      }
+
       const data = await response.json();
+      console.log('AI Response:', data);
+
       const aiText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
       if (aiText) {
-        setMockQuote({...mockQuote, scopeSummary: aiText});
+        setMockQuote(prev => ({...prev, scopeSummary: aiText}));
         setHasAiVersion(true);
+        console.log('AI rewrite successful');
+      } else {
+        alert('AI returned an empty response. Please try again.');
       }
     } catch (error) {
       console.error('AI rewrite error:', error);
-      alert('Failed to rewrite summary. Please try again.');
+      alert(`Failed to rewrite summary: ${error.message}`);
     } finally {
       setIsRewriting(false);
     }
@@ -711,7 +724,7 @@ const ReviewScreen = ({ mockQuote, setMockQuote, handleItemChange, navigateTo, h
 
   const handleRestoreOriginal = () => {
     if (originalSummary) {
-      setMockQuote({...mockQuote, scopeSummary: originalSummary});
+      setMockQuote(prev => ({...prev, scopeSummary: originalSummary}));
       setHasAiVersion(false);
       setOriginalSummary('');
     }
