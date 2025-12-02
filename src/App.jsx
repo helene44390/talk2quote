@@ -1137,7 +1137,9 @@ const Layout = ({ children, isMenuOpen, setIsMenuOpen, navigateTo, handleLogout 
           <button onClick={() => setIsMenuOpen(true)} className="p-2 rounded-full text-blue-600 hover:bg-blue-50" aria-label="Open Menu">
             <Menu size={24} />
           </button>
-          <AppHeader />
+          <div className="flex justify-center">
+            <img src={T2Q_LOGO_URL} alt="Talk2Quote App" className="h-12 object-contain" />
+          </div>
           <button
             onClick={() => navigateTo('referral')}
             className="p-2 rounded-full text-purple-600 hover:bg-purple-50"
