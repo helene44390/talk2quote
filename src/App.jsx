@@ -662,6 +662,10 @@ const MainScreen = ({ mockQuote, setMockQuote, isClientInfoSet, handleRecordTogg
 );
 
 const ReviewScreen = ({ mockQuote, setMockQuote, handleItemChange, navigateTo, handleQuoteSent }) => {
+  const [isRewriting, setIsRewriting] = useState(false);
+  const [originalSummary, setOriginalSummary] = useState('');
+  const [hasAiVersion, setHasAiVersion] = useState(false);
+
   const handleDeleteItem = (itemId) => {
     const newItems = mockQuote.items.filter(item => item.id !== itemId);
     setMockQuote({...mockQuote, items: newItems});
@@ -671,6 +675,46 @@ const ReviewScreen = ({ mockQuote, setMockQuote, handleItemChange, navigateTo, h
     const newId = mockQuote.items.length > 0 ? Math.max(...mockQuote.items.map(i => i.id)) + 1 : 1;
     const newItem = { id: newId, description: 'New Item', qty: 1, price: 0 };
     setMockQuote({...mockQuote, items: [...mockQuote.items, newItem]});
+  };
+
+  const handleAiRewrite = async () => {
+    if (!mockQuote.scopeSummary) return;
+
+    setIsRewriting(true);
+    setOriginalSummary(mockQuote.scopeSummary);
+
+    try {
+      const prompt = `Rewrite the following job scope summary to be more professional, clear, and comprehensive. Keep all important details but improve the structure and language:\n\n${mockQuote.scopeSummary}`;
+
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${API_KEY}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }]
+        })
+      });
+
+      const data = await response.json();
+      const aiText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+      if (aiText) {
+        setMockQuote({...mockQuote, scopeSummary: aiText});
+        setHasAiVersion(true);
+      }
+    } catch (error) {
+      console.error('AI rewrite error:', error);
+      alert('Failed to rewrite summary. Please try again.');
+    } finally {
+      setIsRewriting(false);
+    }
+  };
+
+  const handleRestoreOriginal = () => {
+    if (originalSummary) {
+      setMockQuote({...mockQuote, scopeSummary: originalSummary});
+      setHasAiVersion(false);
+      setOriginalSummary('');
+    }
   };
 
   return (
@@ -707,12 +751,43 @@ const ReviewScreen = ({ mockQuote, setMockQuote, handleItemChange, navigateTo, h
         </div>
 
         <div className="space-y-2 pb-3 border-b">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Scope Summary (From Transcript)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+                Scope Summary {hasAiVersion ? '(AI Enhanced)' : '(From Transcript)'}
+            </label>
             <textarea
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-gray-700 resize-y min-h-[100px]"
                 value={mockQuote.scopeSummary || ''}
                 onChange={(e) => setMockQuote({...mockQuote, scopeSummary: e.target.value})}
             />
+            <div className="flex gap-2 mt-2">
+                {!hasAiVersion ? (
+                    <button
+                        onClick={handleAiRewrite}
+                        disabled={isRewriting || !mockQuote.scopeSummary}
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    >
+                        {isRewriting ? (
+                            <>
+                                <Loader size={16} className="animate-spin" />
+                                AI is rewriting...
+                            </>
+                        ) : (
+                            <>
+                                <Star size={16} />
+                                Enhance with AI
+                            </>
+                        )}
+                    </button>
+                ) : (
+                    <button
+                        onClick={handleRestoreOriginal}
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all"
+                    >
+                        <ArrowLeft size={16} />
+                        Restore Original
+                    </button>
+                )}
+            </div>
         </div>
 
         <div className="space-y-4">
