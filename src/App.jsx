@@ -331,7 +331,11 @@ const MainScreen = ({ mockQuote, setMockQuote, isClientInfoSet, handleRecordTogg
     <div className="flex flex-col h-full p-4 bg-gray-50">
       <div className="text-center mb-6">
         <h2 className="text-2xl font-bold text-gray-800 mb-1">Create a Quote</h2>
-        <p className="text-sm text-gray-500">Start by entering the client's essential details.</p>
+        <p className="text-sm text-gray-500 mb-2">Start by entering the client's essential details.</p>
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-left">
+          <p className="text-xs text-blue-800 font-medium mb-1">Quick tip:</p>
+          <p className="text-xs text-blue-700">Speak clearly and include all necessary details: client name, job address, scope of work, quantities, and pricing. The more detail you provide, the better your quote will be!</p>
+        </div>
       </div>
 
       <div className="mb-8 p-4 bg-white rounded-xl shadow-lg border border-gray-100 space-y-4">
@@ -1103,9 +1107,9 @@ const AccountingScreen = ({ user, supabase }) => {
     }
 
     const providers = [
-        { id: 'xero', name: 'Xero', color: 'bg-blue-500', icon: 'X', description: 'Direct API connection to Xero' },
-        { id: 'quickbooks', name: 'QuickBooks', color: 'bg-green-600', icon: 'Q', description: 'Direct API connection to QuickBooks' },
-        { id: 'myob', name: 'MYOB', color: 'bg-purple-600', icon: 'M', description: 'Direct API connection to MYOB' },
+        { id: 'xero', name: 'Xero', color: 'bg-blue-500', description: 'Direct API connection to Xero' },
+        { id: 'quickbooks', name: 'QuickBooks', color: 'bg-green-600', description: 'Direct API connection to QuickBooks' },
+        { id: 'myob', name: 'MYOB', color: 'bg-red-600', description: 'Direct API connection to MYOB' },
     ];
 
     return (
@@ -1128,8 +1132,10 @@ const AccountingScreen = ({ user, supabase }) => {
                             <div className={`p-4 ${isConnected ? 'bg-blue-50 border-b border-blue-100' : ''}`}>
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center">
-                                        <div className={`w-10 h-10 flex items-center justify-center rounded-full text-white font-bold mr-4 ${provider.color}`}>
-                                            {provider.icon}
+                                        <div className={`w-10 h-10 flex items-center justify-center rounded-lg text-white font-bold mr-4 ${provider.color}`}>
+                                            {provider.id === 'xero' && <span className="text-xl">X</span>}
+                                            {provider.id === 'quickbooks' && <span className="text-xl">Q</span>}
+                                            {provider.id === 'myob' && <span className="text-xl">M</span>}
                                         </div>
                                         <div>
                                             <div className="font-semibold text-gray-800">{provider.name}</div>
@@ -1303,34 +1309,34 @@ const ShareScreen = ({ connectedAccountingSoftware, mockQuote, handleQuoteSent, 
 };
 
 const ReferralScreen = () => (
-    <div className="p-4 bg-gray-50 h-full overflow-y-auto">
-        <h2 className="text-2xl font-bold text-blue-600 mb-4 flex items-center"><Gift size={24} className="mr-2"/> Referral Program</h2>
-        <p className="text-gray-600 mb-6">Refer your industry friends and earn discounts on your next subscription payment!</p>
+    <div className="p-4 bg-gray-50 h-full overflow-y-auto pb-6">
+        <h2 className="text-xl sm:text-2xl font-bold text-blue-600 mb-3 flex items-center"><Gift size={20} className="mr-2"/> Referral Program</h2>
+        <p className="text-sm text-gray-600 mb-4">Refer your industry friends and earn discounts on your next subscription payment!</p>
 
-        <div className="bg-white p-6 rounded-xl shadow-lg border-2 border-green-100 mb-6 text-center">
-            <h3 className="text-3xl font-bold text-green-700 mb-1">$20 OFF</h3>
-            <p className="text-sm font-semibold text-gray-700 mb-4">For every successful signup.</p>
-            <div className="border-t pt-4">
+        <div className="bg-white p-4 sm:p-6 rounded-xl shadow-lg border-2 border-green-100 mb-4 text-center">
+            <h3 className="text-2xl sm:text-3xl font-bold text-green-700 mb-1">$20 OFF</h3>
+            <p className="text-xs sm:text-sm font-semibold text-gray-700 mb-3">For every successful signup.</p>
+            <div className="border-t pt-3">
                 <p className="text-xs text-gray-500 mb-2">Your Unique Referral Code:</p>
-                <div className="bg-gray-100 p-3 rounded-lg flex justify-between items-center">
-                    <span className="font-mono font-bold text-lg text-gray-800 select-all">TQ-JD-3289</span>
-                    <button className="text-blue-500 hover:text-blue-700 text-sm font-semibold">Copy</button>
+                <div className="bg-gray-100 p-2 sm:p-3 rounded-lg flex justify-between items-center">
+                    <span className="font-mono font-bold text-base sm:text-lg text-gray-800 select-all">TQ-JD-3289</span>
+                    <button className="text-blue-500 hover:text-blue-700 text-xs sm:text-sm font-semibold ml-2">Copy</button>
                 </div>
             </div>
         </div>
 
-        <h3 className="font-bold text-gray-700 mb-3">How It Works</h3>
+        <h3 className="font-bold text-gray-700 mb-2 text-sm sm:text-base">How It Works</h3>
         <div className="bg-white rounded-lg shadow-sm divide-y">
             {[
                 { step: 1, text: "Share your unique referral code (TQ-JD-3289) with a fellow tradie." },
                 { step: 2, text: "They sign up for Talk2Quote Pro Plan using your code." },
                 { step: 3, text: "You automatically receive $20 off your next bill!" },
             ].map((item) => (
-                <div key={item.step} className="p-4 flex items-start space-x-3">
-                    <div className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full bg-blue-100 text-blue-600 font-bold text-sm mt-0.5">
+                <div key={item.step} className="p-3 sm:p-4 flex items-start space-x-2 sm:space-x-3">
+                    <div className="flex-shrink-0 w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-full bg-blue-100 text-blue-600 font-bold text-xs sm:text-sm mt-0.5">
                         {item.step}
                     </div>
-                    <p className="text-gray-700">{item.text}</p>
+                    <p className="text-xs sm:text-sm text-gray-700">{item.text}</p>
                 </div>
             ))}
         </div>
