@@ -1108,8 +1108,8 @@ const AccountingScreen = ({ user, supabase }) => {
     }
 
     const providers = [
-        { id: 'xero', name: 'Xero', logo: '/Xero logo.jpg', description: 'Direct API connection to Xero' },
-        { id: 'quickbooks', name: 'QuickBooks', logo: '/Quickbooks logo.jpg', description: 'Direct API connection to QuickBooks' },
+        { id: 'xero', name: 'Xero', logo: '/Xero logo copy copy.png', description: 'Direct API connection to Xero' },
+        { id: 'quickbooks', name: 'QuickBooks', logo: '/Quickbooks logo copy copy.png', description: 'Direct API connection to QuickBooks' },
         { id: 'myob', name: 'MYOB', logo: '/MYOB logo.jpg', description: 'Direct API connection to MYOB' },
     ];
 
