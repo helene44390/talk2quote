@@ -844,7 +844,7 @@ const PdfPreviewScreen = ({ mockQuote, companyDetails, navigateTo, handleQuoteSe
     const subTotal = companyDetails.gstRegistered ? (total - gstAmount) : total;
 
     return (
-    <div className="fixed inset-0 bg-gray-900 z-50 flex flex-col print:bg-white print:static">
+    <div className="fixed inset-0 bg-white z-50 flex flex-col print:static">
         {/* Navigation Bar - Hidden during print */}
         <div className="bg-white p-4 shadow-md flex justify-between items-center print:hidden">
             <h2 className="font-bold text-gray-800">PDF Preview</h2>
@@ -854,7 +854,7 @@ const PdfPreviewScreen = ({ mockQuote, companyDetails, navigateTo, handleQuoteSe
         </div>
 
         {/* Scrollable Content Area */}
-        <div className="flex-grow overflow-y-auto p-4 bg-gray-800 flex justify-center print:p-0 print:bg-white print:overflow-visible">
+        <div className="flex-grow overflow-y-auto p-4 bg-white flex justify-center print:p-0 print:overflow-visible">
             {/* The Actual PDF Document - A4 Aspect Ratio */}
             <div className="bg-white w-full max-w-[595px] min-h-[842px] p-8 shadow-xl text-xs sm:text-sm print:shadow-none print:w-full print:max-w-none">
                 <div className="flex justify-between items-start mb-8 border-b pb-4">
