@@ -1138,7 +1138,7 @@ const Layout = ({ children, isMenuOpen, setIsMenuOpen, navigateTo, handleLogout 
             <Menu size={24} />
           </button>
           <div className="flex justify-center">
-            <img src={T2Q_LOGO_URL} alt="Talk2Quote App" className="h-12 object-contain" />
+            <img src={T2Q_LOGO_URL} alt="Talk2Quote App" className="h-16 object-contain" />
           </div>
           <button
             onClick={() => navigateTo('referral')}
