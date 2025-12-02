@@ -162,7 +162,9 @@ const MenuItem = ({ icon: Icon, label, onClick, isDestructive }) => (
 );
 
 const AppHeader = () => (
-    <img src={T2Q_LOGO_URL} alt="Talk2Quote App" className="h-16 object-contain" />
+    <div className="flex justify-center">
+        <img src={T2Q_LOGO_URL} alt="Talk2Quote App" className="h-16 object-contain" />
+    </div>
 );
 
 const LogoTitle = () => (
