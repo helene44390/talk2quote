@@ -162,11 +162,11 @@ const MenuItem = ({ icon: Icon, label, onClick, isDestructive }) => (
 );
 
 const AppHeader = () => (
-    <img src={T2Q_LOGO_URL} alt="Talk2Quote App" className="h-8 object-contain" />
+    <img src={T2Q_LOGO_URL} alt="Talk2Quote App" className="h-10 object-contain" />
 );
 
 const LogoTitle = () => (
-    <img src={T2Q_LOGO_URL} alt="Talk2Quote Logo" className="h-6 object-contain" />
+    <img src={T2Q_LOGO_URL} alt="Talk2Quote Logo" className="h-8 object-contain" />
 );
 
 // --- Screen Components ---
