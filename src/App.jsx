@@ -892,11 +892,11 @@ const PdfPreviewScreen = ({ mockQuote, companyDetails, navigateTo, handleQuoteSe
                     </div>
                 </div>
 
-                <div className="mb-10 bg-gray-50 p-4 rounded-lg">
-                    <h4 className="font-bold text-gray-700 mb-2 text-sm">Prepared For:</h4>
-                    <p className="text-base font-semibold text-gray-800">{mockQuote.clientName || 'Valued Client'}</p>
-                    <p className="text-gray-600 text-sm mt-1">{mockQuote.jobAddress}</p>
-                    <p className="text-gray-600 font-medium mt-1 text-sm">Email: {mockQuote.clientEmail || 'N/A'}</p>
+                <div className="mb-10 bg-gray-50 p-6 rounded-lg">
+                    <h4 className="font-bold text-gray-700 mb-3 text-base">Prepared For:</h4>
+                    <p className="text-lg font-semibold text-gray-800">{mockQuote.clientName || 'Valued Client'}</p>
+                    <p className="text-gray-600 text-base mt-2 leading-relaxed">{mockQuote.jobAddress}</p>
+                    <p className="text-gray-600 font-medium mt-2 text-base">Email: {mockQuote.clientEmail || 'N/A'}</p>
                 </div>
 
                 {mockQuote.scopeSummary && (
