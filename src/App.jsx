@@ -27,7 +27,7 @@ const db = getFirestore(app);
 
 const APP_ID = 'talk2quote-v1';
 const DEFAULT_LOGO_URL = "https://placehold.co/600x150/e2e8f0/475569?text=Your+Logo&font=roboto";
-const T2Q_LOGO_URL = "/LOGO.png";
+const T2Q_LOGO_URL = "/LOGO1.png";
 
 // --- Helper Functions ---
 const calculateQuoteTotal = (items) => {
@@ -162,11 +162,13 @@ const MenuItem = ({ icon: Icon, label, onClick, isDestructive }) => (
 );
 
 const AppHeader = () => (
-    <img src={T2Q_LOGO_URL} alt="Talk2Quote App" className="h-10 object-contain" />
+    <img src={T2Q_LOGO_URL} alt="Talk2Quote App" className="h-16 object-contain" />
 );
 
 const LogoTitle = () => (
-    <img src={T2Q_LOGO_URL} alt="Talk2Quote Logo" className="h-8 object-contain" />
+    <div className="flex justify-center">
+        <img src={T2Q_LOGO_URL} alt="Talk2Quote Logo" className="h-20 object-contain" />
+    </div>
 );
 
 // --- Screen Components ---
