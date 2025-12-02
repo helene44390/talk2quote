@@ -26,8 +26,8 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 const APP_ID = 'talk2quote-v1';
-const DEFAULT_LOGO_URL = "https://placehold.co/600x150/e2e8f0/475569?text=Your+Logo&font=roboto"; 
-const T2Q_LOGO_URL = "https://placehold.co/600x150/2563eb/ffffff?text=Talk2Quote&font=roboto";
+const DEFAULT_LOGO_URL = "https://placehold.co/600x150/e2e8f0/475569?text=Your+Logo&font=roboto";
+const T2Q_LOGO_URL = "/LOGO.png";
 
 // --- Helper Functions ---
 const calculateQuoteTotal = (items) => {
