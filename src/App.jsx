@@ -867,107 +867,107 @@ const PdfPreviewScreen = ({ mockQuote, companyDetails, navigateTo, handleQuoteSe
         </div>
 
         {/* Scrollable Content Area */}
-        <div className="flex-grow overflow-y-auto p-4 bg-white flex justify-center print:p-0 print:overflow-visible">
+        <div className="flex-grow overflow-y-auto p-4 bg-gray-100 flex justify-center print:p-0 print:overflow-visible print:bg-white">
             {/* The Actual PDF Document - A4 Aspect Ratio */}
-            <div className="bg-white w-full max-w-[595px] h-auto p-8 shadow-xl text-xs sm:text-sm print:shadow-none print:w-full print:max-w-none">
-                <div className="flex justify-between items-start mb-8 border-b pb-4">
+            <div className="bg-white w-full max-w-[210mm] h-auto p-12 shadow-xl text-sm print:shadow-none print:w-full print:max-w-none print:p-8">
+                <div className="flex justify-between items-start mb-10 border-b-2 border-gray-200 pb-6">
                     <div>
-                        <h1 className="text-2xl font-bold text-blue-800 mb-2">QUOTE</h1>
-                        <p className="text-gray-500">#{mockQuote.id}</p>
-                        <p className="text-gray-500">Date: {mockQuote.date}</p>
+                        <h1 className="text-3xl font-bold text-blue-800 mb-3">QUOTE</h1>
+                        <p className="text-gray-600 text-base">#{mockQuote.id}</p>
+                        <p className="text-gray-600 text-base">Date: {mockQuote.date}</p>
                     </div>
                     <div className="text-right">
                         {companyDetails.logoUrl ? (
-                           <img src={companyDetails.logoUrl} alt="Company Logo" className="h-16 mx-auto mb-2 object-contain" />
+                           <img src={companyDetails.logoUrl} alt="Company Logo" className="h-20 mx-auto mb-3 object-contain" />
                         ) : (
                            <h3 className="font-bold text-2xl text-gray-800">{companyDetails.name || 'Your Business Name'}</h3>
                         )}
-                        {!companyDetails.logoUrl && <div className="h-2"></div>} 
-                        
-                        <p className="text-gray-600">{companyDetails.address || 'Company Address'}</p>
-                        <p className="text-gray-600">{companyDetails.email}</p>
-                        <p className="text-gray-600">{companyDetails.phone}</p>
-                        <p className="text-gray-600">{companyDetails.website}</p>
-                        <p className="text-gray-600">ABN: {companyDetails.abn}</p>
+                        {!companyDetails.logoUrl && <div className="h-2"></div>}
+
+                        <p className="text-gray-600 text-sm">{companyDetails.address || 'Company Address'}</p>
+                        <p className="text-gray-600 text-sm">{companyDetails.email}</p>
+                        <p className="text-gray-600 text-sm">{companyDetails.phone}</p>
+                        <p className="text-gray-600 text-sm">{companyDetails.website}</p>
+                        <p className="text-gray-600 text-sm font-medium">ABN: {companyDetails.abn}</p>
                     </div>
                 </div>
 
-                <div className="mb-8 bg-gray-50 p-4 rounded">
-                    <h4 className="font-bold text-gray-700 mb-2">Prepared For:</h4>
-                    <p className="text-lg font-semibold">{mockQuote.clientName || 'Valued Client'}</p>
-                    <p className="text-gray-600">{mockQuote.jobAddress}</p>
-                    <p className="text-gray-600 font-semibold mt-1">Email: {mockQuote.clientEmail || 'N/A'}</p>
+                <div className="mb-10 bg-gray-50 p-6 rounded-lg">
+                    <h4 className="font-bold text-gray-700 mb-3 text-base">Prepared For:</h4>
+                    <p className="text-xl font-semibold text-gray-800">{mockQuote.clientName || 'Valued Client'}</p>
+                    <p className="text-gray-600 text-base mt-2">{mockQuote.jobAddress}</p>
+                    <p className="text-gray-600 font-semibold mt-2 text-base">Email: {mockQuote.clientEmail || 'N/A'}</p>
                 </div>
 
                 {mockQuote.scopeSummary && (
-                    <div className="mb-8">
-                        <h4 className="font-bold text-gray-800 mb-2 border-b pb-1">Scope of Work Summary</h4>
-                        <p className="whitespace-pre-wrap text-gray-700 leading-relaxed">{mockQuote.scopeSummary}</p>
+                    <div className="mb-10">
+                        <h4 className="font-bold text-gray-800 mb-3 text-base border-b-2 border-gray-200 pb-2">Scope of Work Summary</h4>
+                        <p className="whitespace-pre-wrap text-gray-700 leading-relaxed text-base">{mockQuote.scopeSummary}</p>
                     </div>
                 )}
 
-                <table className="w-full mb-8">
+                <table className="w-full mb-10">
                     <thead>
-                        <tr className="border-b-2 border-gray-800">
-                            <th className="text-left py-2">Description</th>
-                            <th className="text-right py-2">Qty</th>
-                            <th className="text-right py-2">Unit</th>
-                            <th className="text-right py-2">Total</th>
+                        <tr className="border-b-2 border-gray-800 bg-gray-50">
+                            <th className="text-left py-3 px-3 font-bold text-gray-800">Description</th>
+                            <th className="text-right py-3 px-3 font-bold text-gray-800">Qty</th>
+                            <th className="text-right py-3 px-3 font-bold text-gray-800">Unit</th>
+                            <th className="text-right py-3 px-3 font-bold text-gray-800">Total</th>
                         </tr>
                     </thead>
                     <tbody>
                         {mockQuote.items && mockQuote.items.map((item) => (
                             <tr key={item.id} className="border-b border-gray-200">
-                                <td className="py-2 text-gray-800">{item.description}</td>
-                                <td className="py-2 text-right text-gray-600">{item.qty}</td>
-                                <td className="py-2 text-right text-gray-600">${item.price ? Number(item.price).toFixed(2) : '0.00'}</td>
-                                <td className="py-2 text-right font-medium">${((Number(item.qty) || 0) * (Number(item.price) || 0)).toFixed(2)}</td>
+                                <td className="py-3 px-3 text-gray-800">{item.description}</td>
+                                <td className="py-3 px-3 text-right text-gray-600">{item.qty}</td>
+                                <td className="py-3 px-3 text-right text-gray-600">${item.price ? Number(item.price).toFixed(2) : '0.00'}</td>
+                                <td className="py-3 px-3 text-right font-medium">${((Number(item.qty) || 0) * (Number(item.price) || 0)).toFixed(2)}</td>
                             </tr>
                         ))}
                     </tbody>
                 </table>
 
-                <div className="flex justify-end mb-8">
-                    <div className="w-1/2 space-y-2">
+                <div className="flex justify-end mb-10">
+                    <div className="w-1/2 space-y-3">
                         {companyDetails.gstRegistered && (
                             <>
-                                <div className="flex justify-between text-gray-600">
+                                <div className="flex justify-between text-gray-600 text-base">
                                     <span>Subtotal</span>
                                     <span>${subTotal.toFixed(2)}</span>
                                 </div>
-                                <div className="flex justify-between text-gray-600">
+                                <div className="flex justify-between text-gray-600 text-base">
                                     <span>GST (10%)</span>
                                     <span>${gstAmount.toFixed(2)}</span>
                                 </div>
                             </>
                         )}
-                        <div className="flex justify-between pt-2 border-t border-gray-800">
-                            <span className="font-bold text-lg">Total</span>
-                            <span className="font-bold text-lg text-blue-800">${total.toFixed(2)}</span>
+                        <div className="flex justify-between pt-3 border-t-2 border-gray-800">
+                            <span className="font-bold text-xl">Total</span>
+                            <span className="font-bold text-xl text-blue-800">${total.toFixed(2)}</span>
                         </div>
-                        <p className="text-right text-xs text-gray-500">
+                        <p className="text-right text-sm text-gray-500">
                             {companyDetails.gstRegistered ? 'Includes GST' : 'GST Free'}
                         </p>
                     </div>
                 </div>
 
-                <div className="border-t pt-4">
+                <div className="border-t-2 border-gray-200 pt-6">
                     {/* Hide approval note on printed PDF to look cleaner */}
-                    <div className="bg-blue-50 p-3 rounded-lg text-xs text-blue-800 mb-4 font-medium flex items-center print:hidden">
-                        <Check size={16} className="mr-2 flex-shrink-0" />
+                    <div className="bg-blue-50 p-4 rounded-lg text-sm text-blue-800 mb-6 font-medium flex items-center print:hidden">
+                        <Check size={18} className="mr-2 flex-shrink-0" />
                         This quote is **approveable** via a secure link in the shared email.
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-8">
                         <div>
-                            <h4 className="font-bold text-gray-700 mb-1">Bank Details</h4>
-                            <p>Bank: {companyDetails.bankName}</p>
-                            <p>Acct: {companyDetails.accountName}</p>
-                            <p>BSB: {companyDetails.bsb} | Acc: {companyDetails.accountNumber}</p>
+                            <h4 className="font-bold text-gray-700 mb-3 text-base">Bank Details</h4>
+                            <p className="text-sm text-gray-600">Bank: {companyDetails.bankName}</p>
+                            <p className="text-sm text-gray-600">Acct: {companyDetails.accountName}</p>
+                            <p className="text-sm text-gray-600">BSB: {companyDetails.bsb} | Acc: {companyDetails.accountNumber}</p>
                         </div>
                         <div className="text-right">
-                            <h4 className="font-bold text-gray-700 mb-1">Terms</h4>
-                            <p>{companyDetails.terms}</p>
-                            <p>Valid for 30 Days</p>
+                            <h4 className="font-bold text-gray-700 mb-3 text-base">Terms</h4>
+                            <p className="text-sm text-gray-600">{companyDetails.terms}</p>
+                            <p className="text-sm text-gray-600">Valid for 30 Days</p>
                         </div>
                     </div>
                 </div>
