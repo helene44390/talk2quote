@@ -2051,6 +2051,33 @@ const SubscriptionScreen = ({ user, supabase }) => {
     );
 };
 
+const InstallBanner = ({ onInstall, onDismiss }) => (
+    <div className="fixed top-0 left-0 right-0 bg-blue-600 text-white p-4 shadow-lg z-50 flex items-center justify-between">
+      <div className="flex items-center flex-1">
+        <Download size={24} className="mr-3 flex-shrink-0" />
+        <div className="flex-1">
+          <p className="font-semibold text-sm">Install Talk2Quote</p>
+          <p className="text-xs opacity-90">Get the best experience with our app</p>
+        </div>
+      </div>
+      <div className="flex gap-2 ml-2">
+        <button
+          onClick={onInstall}
+          className="bg-white text-blue-600 px-4 py-2 rounded-lg font-semibold text-sm hover:bg-blue-50"
+        >
+          Install
+        </button>
+        <button
+          onClick={onDismiss}
+          className="p-2 hover:bg-blue-700 rounded-lg"
+          aria-label="Dismiss"
+        >
+          <X size={20} />
+        </button>
+      </div>
+    </div>
+);
+
 const MenuDrawer = ({ isMenuOpen, navigateTo, handleLogout }) => (
     <div className={`fixed top-0 left-0 h-full w-64 bg-white shadow-2xl z-50 transform transition-transform duration-300 ${isMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
       <div className="p-6">
@@ -2104,7 +2131,10 @@ const App = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [loadingQuotes, setLoadingQuotes] = useState(false);
   const [integrationUrl, setIntegrationUrl] = useState('');
-  
+
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
+
   // Speech Recognition State
   const [transcript, setTranscript] = useState('');
   const recognitionRef = useRef(null);
@@ -2142,6 +2172,38 @@ const App = () => {
   });
   
   const [previousQuotes, setPreviousQuotes] = useState([]);
+
+  // --- PWA INSTALL PROMPT ---
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallBanner(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setShowInstallBanner(false);
+    }
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+
+    if (outcome === 'accepted') {
+      setShowInstallBanner(false);
+    }
+
+    setDeferredPrompt(null);
+  };
 
   // --- FIREBASE AUTHENTICATION ---
   useEffect(() => {
@@ -2567,14 +2629,22 @@ const App = () => {
   }
 
   return (
-    <Layout 
-        isMenuOpen={isMenuOpen} 
-        setIsMenuOpen={setIsMenuOpen} 
-        navigateTo={navigateTo} 
-        handleLogout={handleLogout}
-    >
-        {content}
-    </Layout>
+    <>
+      {showInstallBanner && user && (
+        <InstallBanner
+          onInstall={handleInstallClick}
+          onDismiss={() => setShowInstallBanner(false)}
+        />
+      )}
+      <Layout
+          isMenuOpen={isMenuOpen}
+          setIsMenuOpen={setIsMenuOpen}
+          navigateTo={navigateTo}
+          handleLogout={handleLogout}
+      >
+          {content}
+      </Layout>
+    </>
   );
 };
 
