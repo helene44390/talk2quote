@@ -1968,7 +1968,7 @@ const SubscriptionScreen = ({ user, supabase }) => {
                         className="w-full py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 flex items-center justify-center transition mb-3"
                     >
                         <CreditCard size={18} className="mr-2"/>
-                        {subscription?.payment_method_last4 ? 'Update Payment Method' : 'Add Payment Method'}
+                        Update Payment Method
                     </button>
                 )}
 
