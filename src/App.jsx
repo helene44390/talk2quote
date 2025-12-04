@@ -1443,7 +1443,7 @@ const SubscriptionScreen = ({ user }) => {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    price_id: 'price_1234567890',
+                    price_id: 'price_1SaaZeRXexG1Z7OqSpChrYag',
                     success_url: successUrl,
                     cancel_url: cancelUrl,
                     mode: 'subscription'
