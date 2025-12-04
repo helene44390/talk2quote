@@ -1,16 +1,96 @@
-# React + Vite
+# Talk2Quote App
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A professional quote generation app with voice-to-text capabilities powered by Google Gemini AI.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Voice-to-text quote generation
+- AI-powered quote formatting and enhancement
+- Firebase Authentication
+- Supabase database integration
+- Stripe payment integration
+- PDF quote generation and sharing
 
-## React Compiler
+## Setup Instructions
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 1. Install Dependencies
 
-## Expanding the ESLint configuration
+```bash
+npm install
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### 2. Set Up Firebase Cloud Functions
+
+The Gemini API calls are handled securely through Firebase Cloud Functions to protect your API key.
+
+#### Install Functions Dependencies
+
+```bash
+npm run setup:functions
+```
+
+#### Configure Gemini API Key
+
+Set your Gemini API key as a Firebase environment variable:
+
+```bash
+firebase functions:config:set gemini.api_key="YOUR_GEMINI_API_KEY_HERE"
+```
+
+Your current Gemini API key: `AIzaSyColDUivAUv5w1Bkh151PMGn3FkH6iJoc0`
+
+#### Deploy Functions
+
+```bash
+npm run deploy:functions
+```
+
+Or manually:
+
+```bash
+firebase deploy --only functions
+```
+
+### 3. Build the App
+
+```bash
+npm run build
+```
+
+### 4. Deploy to Firebase Hosting
+
+```bash
+firebase deploy --only hosting
+```
+
+Or deploy everything:
+
+```bash
+firebase deploy
+```
+
+## Development
+
+```bash
+npm run dev
+```
+
+## Environment Variables
+
+The following environment variables are configured in `.env`:
+
+- `FIREBASE_WEB_API_KEY` - Firebase Web API key
+- `FIREBASE_PROJECT_ID` - Firebase project ID
+- `VITE_SUPABASE_URL` - Supabase project URL
+- `VITE_SUPABASE_ANON_KEY` - Supabase anonymous key
+
+## Security
+
+- The Gemini API key is stored securely in Firebase Cloud Functions environment configuration
+- API calls to Gemini are made from the backend, not exposed in the frontend
+- Firebase Authentication is required to use AI features
+- Stripe payments are processed through Supabase Edge Functions with Firebase token verification
+
+## Cloud Functions
+
+See `functions/README.md` for detailed information about the Firebase Cloud Functions.

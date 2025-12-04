@@ -23,12 +23,11 @@ import {
   deleteDoc,
   orderBy
 } from "firebase/firestore";
+import { getFunctions, httpsCallable } from "firebase/functions";
 import {
   Menu, Mic, Settings, History, Building, Check, Share2, Mail, MessageSquare,
   Home, User, CreditCard, Save, Pencil, Phone, FileText, X, ChevronRight, Star, Shield, Gift, TrendingUp, Loader, LogOut, ArrowLeft, Printer, Upload, Download
 } from 'lucide-react';
-
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
 const firebaseConfig = {
   apiKey: "AIzaSyCz6yEiW0VhnNliNFsH0y-9DSL2yRc081c",
@@ -43,6 +42,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const functions = getFunctions(app);
 
 const T2Q_LOGO_URL = "/LOGO1.png";
 
@@ -672,22 +672,13 @@ const ReviewScreen = ({ mockQuote, setMockQuote, handleItemChange, navigateTo, h
     setOriginalSummary(mockQuote.scopeSummary);
 
     try {
-      const prompt = `Rewrite the following job scope summary to be more professional, clear, and comprehensive. Keep all important details but improve the structure and language:\n\n${mockQuote.scopeSummary}`;
-
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }]
-        })
+      const generateQuote = httpsCallable(functions, 'generateQuote');
+      const result = await generateQuote({
+        transcript: mockQuote.scopeSummary,
+        type: 'rewrite'
       });
 
-      if (!response.ok) {
-        throw new Error(`API Error: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      const aiText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      const aiText = result.data?.rewrittenText || '';
 
       if (aiText) {
         setMockQuote(prev => ({...prev, scopeSummary: aiText}));
@@ -1684,36 +1675,15 @@ const App = () => {
         return;
     }
 
-    const prompt = `
-      You are a precise transcription assistant for trade quotes.
-      CRITICAL RULES:
-      1. Convert the speech EXACTLY as spoken into a professional "Scope of Work" format
-      2. DO NOT invent prices/quantities unless mentioned. Use 0 if unknown.
-      3. ONLY extract line items clearly mentioned.
-      TRANSCRIPT: "${finalText}"
-      JSON FORMAT REQUIRED:
-      { "scopeSummary": "Summary text", "items": [ { "id": 1, "description": "Item", "qty": 0, "price": 0 } ] }
-    `;
-
     try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+        const generateQuoteFunc = httpsCallable(functions, 'generateQuote');
+        const result = await generateQuoteFunc({
+            transcript: finalText,
+            type: 'quote'
         });
 
-        const data = await response.json();
-        const textResult = data.candidates[0].content.parts[0].text;
-        const jsonString = textResult.replace(/```json/g, '').replace(/```/g, '').trim();
-        const parsedResult = JSON.parse(jsonString);
-
-        const safeItems = (parsedResult.items || []).map((item, index) => ({
-            ...item,
-            id: index + 1,
-            qty: Number(item.qty) || 0,
-            price: Number(item.price) || 0,
-            description: String(item.description || '')
-        }));
+        const parsedResult = result.data;
+        const safeItems = parsedResult.items || [];
 
         let newDocId = null;
         if (user) {
@@ -1748,7 +1718,7 @@ const App = () => {
 
     } catch (error) {
         console.error("AI Error:", error);
-        alert("Error connecting to AI. Please check your API Key.");
+        alert("Error connecting to AI: " + error.message);
         setIsProcessing(false);
     }
   };
