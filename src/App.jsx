@@ -1408,6 +1408,7 @@ const CompanyDetailsScreen = ({ companyDetails, setCompanyDetails }) => {
 const SubscriptionScreen = ({ user }) => {
     const [subscription, setSubscription] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [upgrading, setUpgrading] = useState(false);
 
     useEffect(() => {
         if (user) {
@@ -1420,6 +1421,52 @@ const SubscriptionScreen = ({ user }) => {
             fetchSub();
         }
     }, [user]);
+
+    const handleUpgrade = async () => {
+        setUpgrading(true);
+        try {
+            const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+            const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+            const apiUrl = `${supabaseUrl}/functions/v1/stripe-checkout`;
+
+            const currentUrl = window.location.origin;
+            const successUrl = `${currentUrl}?payment=success`;
+            const cancelUrl = `${currentUrl}?payment=cancelled`;
+
+            const token = await user.getIdToken();
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    price_id: 'price_1234567890',
+                    success_url: successUrl,
+                    cancel_url: cancelUrl,
+                    mode: 'subscription'
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to create checkout session');
+            }
+
+            const data = await response.json();
+
+            if (data.url) {
+                window.location.href = data.url;
+            } else {
+                throw new Error('No checkout URL returned');
+            }
+        } catch (error) {
+            console.error('Upgrade error:', error);
+            alert('Failed to start checkout. Please try again.');
+            setUpgrading(false);
+        }
+    };
 
     if (loading) return <div className="p-4 flex justify-center"><Loader className="animate-spin text-gray-500"/></div>;
 
@@ -1437,8 +1484,19 @@ const SubscriptionScreen = ({ user }) => {
                     <Star className="text-yellow-400 fill-current" size={24} />
                 </div>
                 <div className="text-3xl font-bold text-gray-900 mb-1">{planType === 'pro' ? '$29/mo' : 'Free'}</div>
-                <button className="w-full py-3 bg-blue-600 text-white font-bold rounded-lg mt-4">
-                    {planType === 'trial' ? 'Upgrade to Pro' : 'Manage Subscription'}
+                <button
+                    onClick={planType === 'trial' ? handleUpgrade : undefined}
+                    disabled={upgrading}
+                    className="w-full py-3 bg-blue-600 text-white font-bold rounded-lg mt-4 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                >
+                    {upgrading ? (
+                        <>
+                            <Loader className="animate-spin mr-2" size={20} />
+                            Loading...
+                        </>
+                    ) : (
+                        planType === 'trial' ? 'Upgrade to Pro' : 'Manage Subscription'
+                    )}
                 </button>
             </div>
         </div>
