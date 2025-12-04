@@ -1202,7 +1202,7 @@ const AccountingScreen = ({ user }) => {
             }, { merge: true });
 
             await fetchIntegrations();
-            alert(`Successfully connected to ${providerId}!`);
+            console.log('Integration pending implementation');
         } catch (error) {
             console.error('Error connecting:', error);
             alert('Failed to connect.');
