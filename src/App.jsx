@@ -28,7 +28,14 @@ const db = getFirestore(app);
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error('Supabase configuration missing. Check your .env file.');
+}
+
+const supabase = supabaseUrl && supabaseAnonKey
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : null;
 
 const APP_ID = 'talk2quote-v1';
 const DEFAULT_LOGO_URL = "https://placehold.co/600x150/e2e8f0/475569?text=Your+Logo&font=roboto";
@@ -413,7 +420,7 @@ const SignUpScreen = ({ handleSignUp, onBack }) => {
             await handleSignUp(formData.email, formData.password);
 
             const user = auth.currentUser;
-            if (user) {
+            if (user && supabase) {
                 const cardNumberClean = formData.cardNumber.replace(/\s/g, '');
                 const last4 = cardNumberClean.slice(-4);
                 const expiryParts = formData.cardExpiry.split('/');
