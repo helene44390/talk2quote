@@ -10,7 +10,7 @@ import {
 
 // --- CONFIGURATION ---
 
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "AIzaSyCmFx-cWKIZXFcYQHtvGkj-yqDFV-XtCMk";
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
 const firebaseConfig = {
   apiKey: "AIzaSyCz6yEiW0VhnNliNFsH0y-9DSL2yRc081c",
@@ -1374,8 +1374,6 @@ const AccountingScreen = ({ user, supabase }) => {
     const handleConnect = async (providerId) => {
         const provider = providerId.toLowerCase();
 
-        alert(`Connecting to ${providerId}...\n\nThis will redirect you to ${providerId}'s OAuth login page to authorize the connection.\n\nDemo mode: Integration UI is ready. To complete the OAuth flow, you'll need to:\n1. Set up OAuth credentials with ${providerId}\n2. Configure the Edge Function callback URLs\n3. Add your OAuth client ID and secret`);
-
         try {
             const { data, error } = await supabase
                 .from('accounting_integrations')
@@ -1833,7 +1831,7 @@ const SubscriptionScreen = ({ user, supabase }) => {
     };
 
     const handleAddPayment = () => {
-        alert('To set up payments:\n\n1. Create a Stripe account at https://dashboard.stripe.com/register\n2. Get your Stripe secret key from the Developers section\n3. Payment integration will be completed with Stripe\n\nFor now, this is a demo showing the UI.');
+        window.open('https://bolt.new/setup/stripe', '_blank');
     };
 
     const handleCancelSubscription = async () => {
