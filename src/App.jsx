@@ -1,14 +1,32 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { initializeApp } from "firebase/app";
-import { getAuth, signInAnonymously, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, setPersistence, browserLocalPersistence, signInWithCustomToken } from "firebase/auth";
-import { getFirestore, collection, addDoc, onSnapshot, query, doc, updateDoc, setDoc, getDoc } from "firebase/firestore";
-import { createClient } from '@supabase/supabase-js';
 import {
-  Menu, Mic, Settings, History, DollarSign, Building, Check, Share2, Mail, MessageSquare, List,
-  Home, User, CreditCard, Save, Pencil, Phone, FileText, X, ChevronRight, Star, Shield, Gift, TrendingUp, Loader, LogOut, Lock, ArrowLeft, Printer, Upload, Download, Globe, MapPin
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  sendPasswordResetEmail,
+  setPersistence,
+  browserLocalPersistence
+} from "firebase/auth";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  onSnapshot,
+  query,
+  doc,
+  updateDoc,
+  setDoc,
+  getDoc,
+  deleteDoc,
+  orderBy
+} from "firebase/firestore";
+import {
+  Menu, Mic, Settings, History, Building, Check, Share2, Mail, MessageSquare,
+  Home, User, CreditCard, Save, Pencil, Phone, FileText, X, ChevronRight, Star, Shield, Gift, TrendingUp, Loader, LogOut, ArrowLeft, Printer, Upload, Download
 } from 'lucide-react';
-
-// --- CONFIGURATION ---
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
@@ -26,22 +44,8 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Supabase configuration missing. Check your .env file.');
-}
-
-const supabase = supabaseUrl && supabaseAnonKey
-  ? createClient(supabaseUrl, supabaseAnonKey)
-  : null;
-
-const APP_ID = 'talk2quote-v1';
-const DEFAULT_LOGO_URL = "https://placehold.co/600x150/e2e8f0/475569?text=Your+Logo&font=roboto";
 const T2Q_LOGO_URL = "/LOGO1.png";
 
-// --- Helper Functions ---
 const calculateQuoteTotal = (items) => {
     if (!items || !Array.isArray(items)) return 0;
     return items.reduce((acc, item) => acc + ((Number(item.qty) || 0) * (Number(item.price) || 0)), 0);
@@ -52,7 +56,7 @@ const exportToCSV = (quotes) => {
         alert("No quotes to export.");
         return;
     }
-    
+
     let csvContent = "data:text/csv;charset=utf-8,";
     csvContent += "Date,Quote ID,Client Name,Client Email,Job Address,Status,Total Amount,GST Included\n";
 
@@ -78,8 +82,6 @@ const exportToCSV = (quotes) => {
     link.click();
     document.body.removeChild(link);
 };
-
-// --- Independent Components ---
 
 const InputField = ({ label, value, onChange, placeholder, type = 'text', readOnly = false, className = '' }) => (
   <div>
@@ -147,10 +149,9 @@ const QuoteLineItem = ({ item, handleItemChange, onDelete }) => {
     );
   };
 
-// SAFE SHARE OPTION (Using DIV instead of Button)
 const ShareOption = ({ icon, label, color, onClick, disabled }) => (
-  <div 
-    onClick={disabled ? null : onClick} 
+  <div
+    onClick={disabled ? null : onClick}
     className={`w-full flex items-center p-4 rounded-xl shadow-md text-white ${disabled ? 'bg-gray-300 cursor-not-allowed' : color + ' hover:shadow-lg cursor-pointer'} transition duration-150`}
     role="button"
     tabIndex={0}
@@ -160,7 +161,6 @@ const ShareOption = ({ icon, label, color, onClick, disabled }) => (
   </div>
 );
 
-// SAFE MENU ITEM (Using DIV)
 const MenuItem = ({ icon: Icon, label, onClick, isDestructive }) => (
   <div
     onClick={onClick}
@@ -178,14 +178,6 @@ const AppHeader = () => (
         <img src={T2Q_LOGO_URL} alt="Talk2Quote App" className="h-48 object-contain" />
     </div>
 );
-
-const LogoTitle = () => (
-    <div className="flex justify-center">
-        <img src={T2Q_LOGO_URL} alt="Talk2Quote Logo" className="h-20 object-contain" />
-    </div>
-);
-
-// --- Screen Components ---
 
 const LoginScreen = ({ handleLogin, handleSignUp, handlePasswordReset }) => {
     const [email, setEmail] = useState('');
@@ -254,19 +246,19 @@ const LoginScreen = ({ handleLogin, handleSignUp, handlePasswordReset }) => {
                     </div>
                     <h2 className="text-2xl font-bold text-gray-800">Reset Password</h2>
                     <p className="text-gray-500 text-sm">Enter your email to receive a reset link.</p>
-                    
+
                     {error && <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg border border-red-200">{error}</div>}
                     {successMsg && <div className="bg-green-50 text-green-700 text-sm p-3 rounded-lg border border-green-200 font-semibold">{successMsg}</div>}
 
                     {!successMsg && (
                         <>
-                            <InputField 
-                                type="email" 
-                                placeholder="Email Address" 
+                            <InputField
+                                type="email"
+                                placeholder="Email Address"
                                 value={email}
                                 onChange={(e) => { setEmail(e.target.value); setError(''); }}
                             />
-                            
+
                             <button onClick={onReset} disabled={loading} className="w-full py-3 text-lg font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-md flex justify-center items-center">
                                 {loading ? <Loader className="animate-spin" size={24}/> : "Send Reset Link"}
                             </button>
@@ -287,29 +279,29 @@ const LoginScreen = ({ handleLogin, handleSignUp, handlePasswordReset }) => {
             <div className="w-full max-w-sm p-8 space-y-6 bg-white shadow-xl rounded-xl">
                 <AppHeader />
                 <p className="text-center text-gray-500 mt-4">Business estimates, simplified.</p>
-                
+
                 {error && <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg text-center font-medium border border-red-200">{error}</div>}
 
                 <div className="space-y-4 mt-6">
-                    <InputField 
-                        type="email" 
-                        placeholder="Email Address" 
+                    <InputField
+                        type="email"
+                        placeholder="Email Address"
                         value={email}
                         onChange={(e) => { setEmail(e.target.value); setError(''); }}
                     />
-                    <InputField 
-                        type="password" 
-                        placeholder="Password" 
+                    <InputField
+                        type="password"
+                        placeholder="Password"
                         value={password}
                         onChange={(e) => { setPassword(e.target.value); setError(''); }}
                     />
                 </div>
-                
+
                 <div className="space-y-3 pt-2">
                     <button onClick={onLogin} disabled={loading} className="w-full py-3 text-lg font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-md flex justify-center items-center">
                         {loading ? <Loader className="animate-spin" size={24}/> : "Sign In"}
                     </button>
-                    
+
                     <div className="text-center">
                         <button onClick={() => setIsResetting(true)} className="text-sm text-blue-600 hover:text-blue-800 font-medium">
                             Forgot Password?
@@ -388,21 +380,6 @@ const SignUpScreen = ({ handleSignUp, onBack }) => {
             return;
         }
 
-        if (!formData.cardExpiry || formData.cardExpiry.length < 5) {
-            setError('Please enter a valid expiry date (MM/YY).');
-            return;
-        }
-
-        if (!formData.cardCVC || formData.cardCVC.length < 3) {
-            setError('Please enter a valid CVC code.');
-            return;
-        }
-
-        if (!formData.cardName) {
-            setError('Please enter the cardholder name.');
-            return;
-        }
-
         if (!formData.termsAccepted) {
             setError('Please accept the terms and conditions.');
             return;
@@ -420,20 +397,22 @@ const SignUpScreen = ({ handleSignUp, onBack }) => {
             await handleSignUp(formData.email, formData.password);
 
             const user = auth.currentUser;
-            if (user && supabase) {
+            if (user) {
                 const cardNumberClean = formData.cardNumber.replace(/\s/g, '');
                 const last4 = cardNumberClean.slice(-4);
-                const expiryParts = formData.cardExpiry.split('/');
 
-                await supabase.from('user_registration_data').insert({
-                    user_id: user.uid,
+                const userProfileRef = doc(db, 'users', user.uid, 'profile', 'details');
+                await setDoc(userProfileRef, {
+                    email: formData.email,
                     card_number_last4: last4,
                     card_brand: 'Visa',
-                    card_expiry_month: parseInt(expiryParts[0]),
-                    card_expiry_year: parseInt('20' + expiryParts[1]),
                     reminder_email_opt_in: formData.reminderEmail,
                     terms_accepted: formData.termsAccepted,
-                    auto_charge_consent: formData.autoChargeConsent
+                    auto_charge_consent: formData.autoChargeConsent,
+                    plan_type: 'trial',
+                    status: 'active',
+                    quotes_generated: 0,
+                    createdAt: new Date().toISOString()
                 });
             }
         } catch (err) {
@@ -640,9 +619,8 @@ const MainScreen = ({ mockQuote, setMockQuote, isClientInfoSet, handleRecordTogg
         <p className="text-xs text-blue-800 font-medium mb-1">Quick tip:</p>
         <p className="text-xs text-blue-700">Speak clearly and include all necessary details: client name, job address, scope of work, quantities, and pricing. The more detail you provide, the better your quote will be!</p>
       </div>
-      
+
       <div className="flex flex-col justify-center items-center mt-auto mb-8 mx-auto">
-        {/* SAFE MIC BUTTON (DIV) */}
         <div
           onClick={handleRecordToggle}
           className={`w-32 h-32 flex items-center justify-center rounded-full transition-all duration-300 transform shadow-2xl relative cursor-pointer ${isRecording ? 'bg-red-500 scale-110 animate-pulse' : 'bg-blue-600 hover:bg-blue-700'} text-white ${!isClientInfoSet && 'opacity-50 cursor-not-allowed'}`}
@@ -696,7 +674,6 @@ const ReviewScreen = ({ mockQuote, setMockQuote, handleItemChange, navigateTo, h
     try {
       const prompt = `Rewrite the following job scope summary to be more professional, clear, and comprehensive. Keep all important details but improve the structure and language:\n\n${mockQuote.scopeSummary}`;
 
-      console.log('Calling AI API...');
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -710,14 +687,11 @@ const ReviewScreen = ({ mockQuote, setMockQuote, handleItemChange, navigateTo, h
       }
 
       const data = await response.json();
-      console.log('AI Response:', data);
-
       const aiText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
       if (aiText) {
         setMockQuote(prev => ({...prev, scopeSummary: aiText}));
         setHasAiVersion(true);
-        console.log('AI rewrite successful');
       } else {
         alert('AI returned an empty response. Please try again.');
       }
@@ -858,14 +832,12 @@ const PdfPreviewScreen = ({ mockQuote, companyDetails, navigateTo, handleQuoteSe
         window.print();
     };
 
-    // Calculate GST if registered
     const total = calculateQuoteTotal(mockQuote.items);
     const gstAmount = companyDetails.gstRegistered ? (total / 11) : 0;
     const subTotal = companyDetails.gstRegistered ? (total - gstAmount) : total;
 
     return (
     <div className="fixed inset-0 bg-white z-50 flex flex-col print:static">
-        {/* Navigation Bar - Hidden during print */}
         <div className="bg-white p-4 shadow-md flex justify-between items-center print:hidden">
             <h2 className="font-bold text-gray-800">PDF Preview</h2>
             <button onClick={() => navigateTo('review')} className="text-gray-500 hover:text-red-500" aria-label="Close Preview">
@@ -873,9 +845,7 @@ const PdfPreviewScreen = ({ mockQuote, companyDetails, navigateTo, handleQuoteSe
             </button>
         </div>
 
-        {/* Scrollable Content Area */}
         <div className="flex-grow overflow-y-auto p-4 bg-gray-100 flex justify-center print:p-0 print:overflow-visible print:bg-white">
-            {/* The Actual PDF Document - A4 Aspect Ratio */}
             <div className="bg-white w-full max-w-[210mm] h-auto p-12 shadow-xl text-sm print:shadow-none print:w-full print:max-w-none print:p-8">
                 <div className="flex justify-between items-start mb-10 border-b-2 border-gray-200 pb-6">
                     <div>
@@ -959,10 +929,9 @@ const PdfPreviewScreen = ({ mockQuote, companyDetails, navigateTo, handleQuoteSe
                 </div>
 
                 <div className="border-t-2 border-gray-200 pt-6">
-                    {/* Hide approval note on printed PDF to look cleaner */}
                     <div className="bg-blue-50 p-4 rounded-lg text-sm text-blue-800 mb-6 font-medium flex items-center print:hidden">
                         <Check size={18} className="mr-2 flex-shrink-0" />
-                        This quote is **approveable** via a secure link in the shared email.
+                        This quote is approveable via a secure link in the shared email.
                     </div>
                     <div className="grid grid-cols-2 gap-8">
                         <div>
@@ -978,15 +947,13 @@ const PdfPreviewScreen = ({ mockQuote, companyDetails, navigateTo, handleQuoteSe
                         </div>
                     </div>
                 </div>
-                
-                {/* FOOTER - POWERED BY */}
+
                 <div className="mt-12 pt-8 border-t border-gray-100 text-center">
                     <p className="text-xs text-gray-400 font-medium">Powered by Talk2Quote App</p>
                 </div>
             </div>
         </div>
-        
-        {/* Footer Buttons - Hidden during print */}
+
         <div className="bg-white p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] space-y-2 print:hidden">
             <button onClick={handlePrint} className="w-full py-3 text-lg font-semibold text-blue-600 bg-white border-2 border-blue-600 rounded-lg hover:bg-blue-50 flex items-center justify-center">
                 <Printer size={20} className="mr-2"/> Download / Print PDF
@@ -995,42 +962,15 @@ const PdfPreviewScreen = ({ mockQuote, companyDetails, navigateTo, handleQuoteSe
                 Confirm & Share Link
             </button>
         </div>
-        
-        {/* CSS for printing - Ensures only the document prints */}
+
         <style>{`
             @media print {
-                @page {
-                    margin: 0.5in;
-                    size: A4;
-                }
-                body {
-                    margin: 0;
-                    padding: 0;
-                }
-                body * {
-                    visibility: hidden;
-                }
-                .bg-white.w-full.max-w-\\[595px\\],
-                .bg-white.w-full.max-w-\\[595px\\] * {
-                    visibility: visible !important;
-                }
-                .bg-white.w-full.max-w-\\[595px\\] {
-                    position: absolute;
-                    left: 0;
-                    top: 0;
-                    width: 100%;
-                    max-width: 100%;
-                    box-shadow: none;
-                    margin: 0;
-                    padding: 0.5in;
-                    background: white !important;
-                }
-                .bg-gray-50,
-                .bg-blue-50 {
-                    background-color: white !important;
-                    -webkit-print-color-adjust: exact;
-                    print-color-adjust: exact;
-                }
+                @page { margin: 0.5in; size: A4; }
+                body { margin: 0; padding: 0; }
+                body * { visibility: hidden; }
+                .bg-white.w-full.max-w-\\[210mm\\], .bg-white.w-full.max-w-\\[210mm\\] * { visibility: visible !important; }
+                .bg-white.w-full.max-w-\\[210mm\\] { position: absolute; left: 0; top: 0; width: 100%; max-width: 100%; box-shadow: none; margin: 0; padding: 0.5in; background: white !important; }
+                .bg-gray-50, .bg-blue-50 { background-color: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             }
         `}</style>
     </div>
@@ -1041,21 +981,21 @@ const HistoryScreen = ({ previousQuotes, lastQuoteAccepted, loadingQuotes, onSel
     <div className="p-4 bg-gray-50 h-full overflow-y-auto">
         <div className="flex justify-between items-center mb-4">
             <h2 className="text-2xl font-bold text-gray-800">History</h2>
-            <button 
+            <button
                 onClick={() => exportToCSV(previousQuotes)}
                 className="text-xs bg-green-100 text-green-800 px-3 py-1.5 rounded-lg font-bold flex items-center hover:bg-green-200"
             >
                 <Download size={14} className="mr-1"/> Export CSV
             </button>
         </div>
-        
+
         {lastQuoteAccepted && (
              <div className="bg-yellow-100 p-4 rounded-xl text-yellow-800 mb-4 font-semibold flex items-center">
                  <Check size={20} className="mr-2" />
                  Quote saved successfully!
             </div>
         )}
-        
+
         {loadingQuotes ? (
             <div className="flex flex-col items-center justify-center py-10">
                 <Loader className="animate-spin text-blue-600 mb-2" size={32} />
@@ -1064,8 +1004,8 @@ const HistoryScreen = ({ previousQuotes, lastQuoteAccepted, loadingQuotes, onSel
         ) : (
             <div className="space-y-4">
                 {previousQuotes && previousQuotes.map((quote) => (
-                    <div 
-                        key={quote.firestoreId} 
+                    <div
+                        key={quote.firestoreId}
                         onClick={() => onSelectQuote(quote)}
                         className={`bg-white p-4 rounded-xl shadow-md flex justify-between items-center cursor-pointer transition duration-150 border-2 ${quote.status === 'Accepted (Client Approved)' ? 'border-green-500 hover:bg-green-50' : 'border-transparent hover:border-blue-500 hover:bg-blue-50'}`}
                     >
@@ -1088,16 +1028,12 @@ const HistoryScreen = ({ previousQuotes, lastQuoteAccepted, loadingQuotes, onSel
                     <p className="text-gray-400 mb-2">No quotes found.</p>
                     <p className="text-sm text-blue-500">Create your first quote now!</p>
                 </div>}
-                <div className="text-center pt-4 text-gray-400 text-sm">-- End of Quotes History --</div>
             </div>
         )}
     </div>
 );
 
 const ProfileScreen = ({ navigateTo, user }) => {
-    const [displayName, setDisplayName] = useState('');
-    const [phoneNumber, setPhoneNumber] = useState('');
-
     return (
         <div className="p-4 bg-gray-50 h-full overflow-y-auto">
             <div className="flex items-center mb-4">
@@ -1116,56 +1052,13 @@ const ProfileScreen = ({ navigateTo, user }) => {
                         disabled
                         className="w-full p-2 border border-gray-300 rounded bg-gray-100 text-gray-600"
                     />
-                    <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
                 </div>
-
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Display Name</label>
-                    <input
-                        type="text"
-                        value={displayName}
-                        onChange={(e) => setDisplayName(e.target.value)}
-                        placeholder="Enter your name"
-                        className="w-full p-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
-                    />
-                </div>
-
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                    <input
-                        type="tel"
-                        value={phoneNumber}
-                        onChange={(e) => setPhoneNumber(e.target.value)}
-                        placeholder="Enter phone number"
-                        className="w-full p-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
-                    />
-                </div>
-
-                <button className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-150 font-semibold">
-                    Save Changes
-                </button>
             </div>
         </div>
     );
 };
 
 const SecurityScreen = ({ navigateTo, user }) => {
-    const [currentPassword, setCurrentPassword] = useState('');
-    const [newPassword, setNewPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
-
-    const handlePasswordChange = () => {
-        if (!currentPassword || !newPassword || !confirmPassword) {
-            alert('Please fill in all fields');
-            return;
-        }
-        if (newPassword !== confirmPassword) {
-            alert('New passwords do not match');
-            return;
-        }
-        alert('Password change functionality will be implemented');
-    };
-
     const handlePasswordReset = async () => {
         if (user?.email) {
             try {
@@ -1186,50 +1079,6 @@ const SecurityScreen = ({ navigateTo, user }) => {
                 <h2 className="text-2xl font-bold text-gray-800">Security</h2>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm p-4 space-y-4 mb-4">
-                <h3 className="font-semibold text-gray-800">Change Password</h3>
-
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Current Password</label>
-                    <input
-                        type="password"
-                        value={currentPassword}
-                        onChange={(e) => setCurrentPassword(e.target.value)}
-                        placeholder="Enter current password"
-                        className="w-full p-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
-                    />
-                </div>
-
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
-                    <input
-                        type="password"
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        placeholder="Enter new password"
-                        className="w-full p-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
-                    />
-                </div>
-
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Confirm New Password</label>
-                    <input
-                        type="password"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        placeholder="Confirm new password"
-                        className="w-full p-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
-                    />
-                </div>
-
-                <button
-                    onClick={handlePasswordChange}
-                    className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-150 font-semibold"
-                >
-                    Update Password
-                </button>
-            </div>
-
             <div className="bg-white rounded-lg shadow-sm p-4">
                 <h3 className="font-semibold text-gray-800 mb-2">Password Reset</h3>
                 <p className="text-sm text-gray-600 mb-3">Send a password reset email to {user?.email}</p>
@@ -1248,21 +1097,10 @@ const SettingsScreen = ({ navigateTo, user }) => {
     const [taxRate, setTaxRate] = useState('10');
     const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
-    const handleProfileClick = () => {
-        navigateTo('profile');
-    };
-
-    const handleSecurityClick = () => {
-        navigateTo('security');
-    };
-
-    const handleTaxRateChange = (e) => {
-        setTaxRate(e.target.value);
-    };
-
-    const toggleNotifications = () => {
-        setNotificationsEnabled(!notificationsEnabled);
-    };
+    const handleProfileClick = () => { navigateTo('profile'); };
+    const handleSecurityClick = () => { navigateTo('security'); };
+    const handleTaxRateChange = (e) => { setTaxRate(e.target.value); };
+    const toggleNotifications = () => { setNotificationsEnabled(!notificationsEnabled); };
 
     return (
         <div className="p-4 bg-gray-50 h-full overflow-y-auto">
@@ -1328,33 +1166,22 @@ const SettingsScreen = ({ navigateTo, user }) => {
     );
 };
 
-const AccountingScreen = ({ user, supabase }) => {
+const AccountingScreen = ({ user }) => {
     const [integrations, setIntegrations] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [syncLogs, setSyncLogs] = useState([]);
 
     useEffect(() => {
         if (user) {
             fetchIntegrations();
-            fetchSyncLogs();
         }
     }, [user]);
 
     const fetchIntegrations = async () => {
         try {
-            const { data, error } = await supabase
-                .from('accounting_integrations')
-                .select('*')
-                .eq('user_id', user.uid);
-
-            if (error) throw error;
-
-            const integrationsMap = {};
-            data?.forEach(integration => {
-                integrationsMap[integration.provider] = integration;
-            });
-
-            setIntegrations(integrationsMap);
+            const integrationsSnapshot = await getDoc(doc(db, 'users', user.uid, 'integrations', 'active'));
+            if(integrationsSnapshot.exists()){
+                setIntegrations(integrationsSnapshot.data());
+            }
         } catch (error) {
             console.error('Error fetching integrations:', error);
         } finally {
@@ -1362,180 +1189,80 @@ const AccountingScreen = ({ user, supabase }) => {
         }
     };
 
-    const fetchSyncLogs = async () => {
-        try {
-            const { data, error } = await supabase
-                .from('integration_sync_logs')
-                .select('*')
-                .eq('user_id', user.uid)
-                .order('created_at', { ascending: false })
-                .limit(5);
-
-            if (error) throw error;
-            setSyncLogs(data || []);
-        } catch (error) {
-            console.error('Error fetching sync logs:', error);
-        }
-    };
-
     const handleConnect = async (providerId) => {
         const provider = providerId.toLowerCase();
-
         try {
-            const { data, error } = await supabase
-                .from('accounting_integrations')
-                .insert({
-                    user_id: user.uid,
-                    provider: provider,
-                    status: 'active',
-                    organization_name: `${providerId} Demo Account`
-                })
-                .select()
-                .single();
-
-            if (error) throw error;
+            const integrationRef = doc(db, 'users', user.uid, 'integrations', 'active');
+            await setDoc(integrationRef, {
+                [provider]: {
+                    connected: true,
+                    connectedAt: new Date().toISOString(),
+                    organization: 'Demo Org'
+                }
+            }, { merge: true });
 
             await fetchIntegrations();
             alert(`Successfully connected to ${providerId}!`);
         } catch (error) {
             console.error('Error connecting:', error);
-            if (error.code === '23505') {
-                alert('You are already connected to this provider.');
-            } else {
-                alert('Failed to connect. Please try again.');
-            }
+            alert('Failed to connect.');
         }
     };
 
     const handleDisconnect = async (providerId) => {
         const provider = providerId.toLowerCase();
-
-        if (!confirm(`Are you sure you want to disconnect from ${providerId}?`)) {
-            return;
-        }
+        if (!confirm(`Disconnect ${providerId}?`)) return;
 
         try {
-            const { error } = await supabase
-                .from('accounting_integrations')
-                .delete()
-                .eq('user_id', user.uid)
-                .eq('provider', provider);
+            const integrationRef = doc(db, 'users', user.uid, 'integrations', 'active');
+            const newIntegrations = {...integrations};
+            delete newIntegrations[provider];
 
-            if (error) throw error;
+            await setDoc(integrationRef, newIntegrations);
 
-            await fetchIntegrations();
-            alert(`Successfully disconnected from ${providerId}`);
+            setIntegrations(newIntegrations);
+            alert(`Disconnected ${providerId}`);
         } catch (error) {
             console.error('Error disconnecting:', error);
-            alert('Failed to disconnect. Please try again.');
         }
     };
 
-    const handleSyncTest = async (providerId) => {
-        const provider = providerId.toLowerCase();
-        const integration = integrations[provider];
-
-        if (!integration) {
-            alert('Please connect first');
-            return;
-        }
-
-        try {
-            const { error } = await supabase
-                .from('integration_sync_logs')
-                .insert({
-                    integration_id: integration.id,
-                    user_id: user.uid,
-                    quote_id: 'DEMO-' + Date.now(),
-                    action: 'sync_quote',
-                    status: 'success',
-                    synced_at: new Date().toISOString()
-                });
-
-            if (error) throw error;
-
-            await fetchSyncLogs();
-            alert(`Test sync to ${providerId} completed successfully!`);
-        } catch (error) {
-            console.error('Error syncing:', error);
-            alert('Sync failed. Please try again.');
-        }
-    };
-
-    if (loading) {
-        return (
-            <div className="p-4 bg-gray-50 h-full flex items-center justify-center">
-                <div className="text-gray-600">Loading integrations...</div>
-            </div>
-        );
-    }
+    if (loading) return <div className="p-4 bg-gray-50 flex justify-center"><Loader className="animate-spin text-gray-500"/></div>;
 
     const providers = [
-        { id: 'xero', name: 'Xero', logo: '/Xero logo copy copy.png', description: 'Direct API connection to Xero' },
-        { id: 'quickbooks', name: 'QuickBooks', logo: '/Quickbooks logo copy copy.png', description: 'Direct API connection to QuickBooks' },
-        { id: 'myob', name: 'MYOB', logo: '/MYOB logo.jpg', description: 'Direct API connection to MYOB' },
+        { id: 'xero', name: 'Xero', logo: '/Xero logo copy copy.png', description: 'Direct API connection' },
+        { id: 'quickbooks', name: 'QuickBooks', logo: '/Quickbooks logo copy copy.png', description: 'Direct API connection' },
+        { id: 'myob', name: 'MYOB', logo: '/MYOB logo.jpg', description: 'Direct API connection' },
     ];
 
     return (
         <div className="p-4 bg-gray-50 h-full overflow-y-auto">
             <h2 className="text-2xl font-bold text-gray-800 mb-4">Accounting Integration</h2>
-
             <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
-                <p className="text-sm text-blue-700">
-                    <strong>Direct API Integration:</strong> Connect your accounting software with one click using secure OAuth authentication. Your quotes will automatically sync to your accounting platform.
-                </p>
+                <p className="text-sm text-blue-700">Connect to sync quotes automatically.</p>
             </div>
 
-            <h3 className="font-bold text-gray-700 mb-3">Available Integrations</h3>
-            <div className="space-y-3 mb-6">
+            <div className="space-y-3">
                 {providers.map(provider => {
-                    const isConnected = integrations[provider.id];
-
+                    const isConnected = integrations[provider.id]?.connected;
                     return (
                         <div key={provider.id} className="bg-white rounded-xl shadow-md overflow-hidden">
                             <div className={`p-4 ${isConnected ? 'bg-blue-50 border-b border-blue-100' : ''}`}>
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center">
                                         <div className="w-12 h-12 flex items-center justify-center rounded-lg mr-4 bg-white border border-gray-200 p-2">
-                                            <img src={provider.logo} alt={`${provider.name} logo`} className="w-full h-full object-contain" style={{ backgroundColor: 'white' }} />
+                                            <img src={provider.logo} alt={provider.name} className="w-full h-full object-contain" />
                                         </div>
                                         <div>
                                             <div className="font-semibold text-gray-800">{provider.name}</div>
                                             <div className="text-xs text-gray-500">{provider.description}</div>
-                                            {isConnected && (
-                                                <div className="text-xs text-gray-600 mt-1">
-                                                    Connected to: {isConnected.organization_name}
-                                                </div>
-                                            )}
                                         </div>
                                     </div>
-
-                                    <div className="flex items-center space-x-2">
+                                    <div>
                                         {isConnected ? (
-                                            <>
-                                                <span className="text-sm text-green-600 font-semibold flex items-center">
-                                                    <Check size={14} className="mr-1"/> CONNECTED
-                                                </span>
-                                                <button
-                                                    onClick={() => handleSyncTest(provider.name)}
-                                                    className="text-xs px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-                                                >
-                                                    Test Sync
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDisconnect(provider.name)}
-                                                    className="text-xs px-3 py-1 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition"
-                                                >
-                                                    Disconnect
-                                                </button>
-                                            </>
+                                            <button onClick={() => handleDisconnect(provider.name)} className="text-xs px-3 py-1 bg-red-50 text-red-600 rounded-lg hover:bg-red-100">Disconnect</button>
                                         ) : (
-                                            <button
-                                                onClick={() => handleConnect(provider.name)}
-                                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold"
-                                            >
-                                                Connect
-                                            </button>
+                                            <button onClick={() => handleConnect(provider.name)} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold">Connect</button>
                                         )}
                                     </div>
                                 </div>
@@ -1544,125 +1271,39 @@ const AccountingScreen = ({ user, supabase }) => {
                     );
                 })}
             </div>
-
-            {syncLogs.length > 0 && (
-                <>
-                    <h3 className="font-bold text-gray-700 mb-3">Recent Sync Activity</h3>
-                    <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-                        {syncLogs.map(log => (
-                            <div key={log.id} className="p-3 border-b border-gray-100 last:border-b-0">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex-1">
-                                        <div className="text-sm font-medium text-gray-800">
-                                            {log.action.replace('_', ' ').toUpperCase()}
-                                        </div>
-                                        <div className="text-xs text-gray-500">
-                                            Quote: {log.quote_id}
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center space-x-2">
-                                        <span className={`text-xs px-2 py-1 rounded-full font-semibold ${
-                                            log.status === 'success' ? 'bg-green-100 text-green-800' :
-                                            log.status === 'failed' ? 'bg-red-100 text-red-800' :
-                                            'bg-yellow-100 text-yellow-800'
-                                        }`}>
-                                            {log.status.toUpperCase()}
-                                        </span>
-                                        <span className="text-xs text-gray-400">
-                                            {new Date(log.created_at).toLocaleDateString()}
-                                        </span>
-                                    </div>
-                                </div>
-                                {log.error_message && (
-                                    <div className="text-xs text-red-600 mt-1">{log.error_message}</div>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                </>
-            )}
         </div>
     );
 };
 
 const ShareScreen = ({ connectedAccountingSoftware, mockQuote, handleQuoteSent, navigateTo, integrationUrl }) => {
     const [sendingToAcc, setSendingToAcc] = useState(false);
-    
-    // --- BASIC SHARE LOGIC ---
+
     const shareText = `Here is the quote for ${mockQuote.clientName || 'your project'}. Total: $${calculateQuoteTotal(mockQuote.items).toFixed(2)}`;
 
     const handleShareWhatsApp = () => {
-        const pdfUrl = window.location.origin + '/quote-preview';
-        const message = `${shareText}\n\nView quote: ${pdfUrl}`;
-        const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
+        const url = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
         window.open(url, '_blank');
     };
 
     const handleShareEmail = () => {
-        const subject = `Quote for ${mockQuote.clientName || 'Project'}`;
-        const body = `${shareText}\n\nPlease reply to approve.`;
-        window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+        window.location.href = `mailto:?subject=${encodeURIComponent("Quote")}&body=${encodeURIComponent(shareText)}`;
     };
 
     const handleShareSMS = () => {
-        const url = `sms:?body=${encodeURIComponent(shareText)}`;
-        window.location.href = url;
+        window.location.href = `sms:?body=${encodeURIComponent(shareText)}`;
     };
-
-    const handleDirectIntegration = async () => {
-        if (!integrationUrl) {
-            alert("Please configure your integration link in the 'Accounting' menu first.");
-            navigateTo('accounting');
-            return;
-        }
-        
-        setSendingToAcc(true);
-        try {
-            // Send payload to the user's configured webhook
-            await fetch(integrationUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(mockQuote)
-            });
-            alert(`Successfully sent quote to ${connectedAccountingSoftware}!`);
-        } catch (error) {
-            console.error("Integration Error", error);
-            alert("Failed to send. Please check your internet or integration link.");
-        }
-        setSendingToAcc(false);
-    };
-
-    const label = connectedAccountingSoftware 
-        ? `Send to ${connectedAccountingSoftware}`
-        : 'Connect Accounting';
 
     return (
       <div className="p-4 bg-gray-50 h-full flex flex-col items-center justify-center">
         <div className="w-full max-w-sm text-center">
           <Share2 size={48} className="text-blue-600 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-gray-800 mb-2">Ready to Share</h2>
-          <p className="text-sm text-gray-500 mb-8">Your quote for {mockQuote.clientName || 'the job'} is approved and ready to send.</p>
+          <p className="text-sm text-gray-500 mb-8">Your quote is ready.</p>
           <div className="space-y-4">
-            
-            {/* Direct Integration Button */}
-            <div 
-                onClick={(!sendingToAcc && connectedAccountingSoftware) ? handleDirectIntegration : (!connectedAccountingSoftware ? () => navigateTo('accounting') : null)}
-                className={`w-full flex items-center p-4 rounded-xl shadow-md text-white transition duration-150 cursor-pointer ${connectedAccountingSoftware ? 'bg-orange-600 hover:bg-orange-700' : 'bg-gray-500 hover:bg-gray-600'}`}
-                role="button"
-                tabIndex={0}
-            >
-                <div className="mr-4">
-                    {sendingToAcc ? <Loader className="animate-spin" size={24}/> : <TrendingUp size={24}/>}
-                </div>
-                <span className="font-semibold text-lg">
-                    {sendingToAcc ? "Sending..." : label}
-                </span>
-            </div>
-
             <ShareOption icon={<MessageSquare size={24}/>} label="WhatsApp" color="bg-green-500" onClick={handleShareWhatsApp} />
             <ShareOption icon={<Mail size={24}/>} label="Email" color="bg-red-500" onClick={handleShareEmail} />
             <ShareOption icon={<Phone size={24}/>} label="SMS" color="bg-blue-500" onClick={handleShareSMS} />
-            
+
             <button onClick={handleQuoteSent} className="w-full py-3 text-lg font-semibold text-blue-600 border border-blue-600 rounded-lg hover:bg-blue-50 mt-6">New Quote</button>
           </div>
         </div>
@@ -1673,7 +1314,7 @@ const ShareScreen = ({ connectedAccountingSoftware, mockQuote, handleQuoteSent, 
 const ReferralScreen = () => (
     <div className="p-4 bg-gray-50 h-full overflow-y-auto pb-6">
         <h2 className="text-xl sm:text-2xl font-bold text-blue-600 mb-3 flex items-center"><Gift size={20} className="mr-2"/> Referral Program</h2>
-        <p className="text-sm text-gray-600 mb-4">Refer your industry friends and earn discounts on your next subscription payment!</p>
+        <p className="text-sm text-gray-600 mb-4">Refer your industry friends and earn discounts!</p>
 
         <div className="bg-white p-4 sm:p-6 rounded-xl shadow-lg border-2 border-green-100 mb-4 text-center">
             <h3 className="text-2xl sm:text-3xl font-bold text-green-700 mb-1">$20 OFF</h3>
@@ -1681,32 +1322,15 @@ const ReferralScreen = () => (
             <div className="border-t pt-3">
                 <p className="text-xs text-gray-500 mb-2">Your Unique Referral Code:</p>
                 <div className="bg-gray-100 p-2 sm:p-3 rounded-lg flex justify-between items-center">
-                    <span className="font-mono font-bold text-base sm:text-lg text-gray-800 select-all">TQ-JD-3289</span>
+                    <span className="font-mono font-bold text-base sm:text-lg text-gray-800 select-all">TQ-USER-001</span>
                     <button className="text-blue-500 hover:text-blue-700 text-xs sm:text-sm font-semibold ml-2">Copy</button>
                 </div>
             </div>
-        </div>
-
-        <h3 className="font-bold text-gray-700 mb-2 text-sm sm:text-base">How It Works</h3>
-        <div className="bg-white rounded-lg shadow-sm divide-y">
-            {[
-                { step: 1, text: "Share your unique referral code (TQ-JD-3289) with a fellow tradie." },
-                { step: 2, text: "They sign up for Talk2Quote Pro Plan using your code." },
-                { step: 3, text: "You automatically receive $20 off your next bill!" },
-            ].map((item) => (
-                <div key={item.step} className="p-3 sm:p-4 flex items-start space-x-2 sm:space-x-3">
-                    <div className="flex-shrink-0 w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-full bg-blue-100 text-blue-600 font-bold text-xs sm:text-sm mt-0.5">
-                        {item.step}
-                    </div>
-                    <p className="text-xs sm:text-sm text-gray-700">{item.text}</p>
-                </div>
-            ))}
         </div>
     </div>
 );
 
 const CompanyDetailsScreen = ({ companyDetails, setCompanyDetails }) => {
-    // Logo Upload Logic
     const handleLogoUpload = (e) => {
         const file = e.target.files[0];
         if (file) {
@@ -1724,8 +1348,7 @@ const CompanyDetailsScreen = ({ companyDetails, setCompanyDetails }) => {
       <div className="bg-white p-4 rounded-xl shadow-lg space-y-6">
         <div className="border-b pb-4">
           <h3 className="font-semibold text-blue-700 mb-3 flex items-center"><Building size={18} className="mr-2"/> Business Information</h3>
-          
-          {/* LOGO UPLOAD SECTION */}
+
           <div className="mb-6 p-4 bg-gray-50 border border-dashed border-gray-300 rounded-lg flex items-center justify-between">
               <div className="flex items-center space-x-4">
                   <div className="h-16 w-16 bg-white rounded-lg border border-gray-200 flex items-center justify-center overflow-hidden">
@@ -1737,7 +1360,6 @@ const CompanyDetailsScreen = ({ companyDetails, setCompanyDetails }) => {
                   </div>
                   <div>
                       <p className="text-sm font-medium text-gray-700">Company Logo</p>
-                      <p className="text-xs text-gray-500">Appears on PDF</p>
                   </div>
               </div>
               <label className="cursor-pointer bg-white border border-gray-300 hover:bg-gray-50 px-3 py-2 rounded-lg shadow-sm text-sm font-medium text-gray-700 flex items-center">
@@ -1748,25 +1370,18 @@ const CompanyDetailsScreen = ({ companyDetails, setCompanyDetails }) => {
 
           <div className='space-y-4'>
             <InputField label="Company Name" value={companyDetails.name} onChange={e => setCompanyDetails({...companyDetails, name: e.target.value})} placeholder="Company Name" />
-            
-            {/* Added Address & Website */}
             <InputField label="Business Address" value={companyDetails.address} onChange={e => setCompanyDetails({...companyDetails, address: e.target.value})} placeholder="Street, City, State, ZIP" />
-            <InputField label="Website (Optional)" value={companyDetails.website} onChange={e => setCompanyDetails({...companyDetails, website: e.target.value})} placeholder="www.yourbusiness.com" />
-            
             <InputField label="ABN/Tax ID" value={companyDetails.abn} onChange={e => setCompanyDetails({...companyDetails, abn: e.target.value})} placeholder="ABN/Tax ID" />
-            
-            {/* GST Toggle */}
+
             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
                 <span className="text-sm font-medium text-gray-700">Registered for GST?</span>
-                <button 
+                <button
                     onClick={() => setCompanyDetails({...companyDetails, gstRegistered: !companyDetails.gstRegistered})}
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${companyDetails.gstRegistered ? 'bg-blue-600' : 'bg-gray-200'}`}
                 >
                     <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${companyDetails.gstRegistered ? 'translate-x-6' : 'translate-x-1'}`} />
                 </button>
             </div>
-
-            <InputField label="Standard Terms" value={companyDetails.terms} onChange={e => setCompanyDetails({...companyDetails, terms: e.target.value})} placeholder="Terms (e.g., 14 Days Net)" />
           </div>
         </div>
         <div>
@@ -1775,7 +1390,7 @@ const CompanyDetailsScreen = ({ companyDetails, setCompanyDetails }) => {
             <InputField label="Bank Name" value={companyDetails.bankName} onChange={e => setCompanyDetails({...companyDetails, bankName: e.target.value})} placeholder="Bank Name" />
             <InputField label="Account Name" value={companyDetails.accountName} onChange={e => setCompanyDetails({...companyDetails, accountName: e.target.value})} placeholder="Account Name" />
             <div className='flex space-x-4'>
-                <InputField label="BSB" value={companyDetails.bsb} onChange={e => setCompanyDetails({...companyDetails, bsb: e.target.value})} placeholder="BSB (e.g., 012-345)" />
+                <InputField label="BSB" value={companyDetails.bsb} onChange={e => setCompanyDetails({...companyDetails, bsb: e.target.value})} placeholder="BSB" />
                 <InputField label="Account Number" value={companyDetails.accountNumber} onChange={e => setCompanyDetails({...companyDetails, accountNumber: e.target.value})} placeholder="Account Number" />
             </div>
           </div>
@@ -1790,298 +1405,45 @@ const CompanyDetailsScreen = ({ companyDetails, setCompanyDetails }) => {
     );
 };
 
-const SubscriptionScreen = ({ user, supabase }) => {
+const SubscriptionScreen = ({ user }) => {
     const [subscription, setSubscription] = useState(null);
-    const [usage, setUsage] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [showCancelModal, setShowCancelModal] = useState(false);
 
     useEffect(() => {
         if (user) {
-            fetchSubscriptionData();
+            const fetchSub = async () => {
+                const subRef = doc(db, 'users', user.uid, 'profile', 'details');
+                const snap = await getDoc(subRef);
+                if (snap.exists()) setSubscription(snap.data());
+                setLoading(false);
+            };
+            fetchSub();
         }
     }, [user]);
 
-    const fetchSubscriptionData = async () => {
-        try {
-            const { data: subData, error: subError } = await supabase
-                .from('subscriptions')
-                .select('*')
-                .eq('user_id', user.uid)
-                .maybeSingle();
+    if (loading) return <div className="p-4 flex justify-center"><Loader className="animate-spin text-gray-500"/></div>;
 
-            if (subError) throw subError;
-
-            const { data: usageData, error: usageError } = await supabase
-                .from('subscription_usage')
-                .select('*')
-                .eq('user_id', user.uid)
-                .maybeSingle();
-
-            if (usageError) throw usageError;
-
-            setSubscription(subData || {
-                plan_type: 'free',
-                status: 'active',
-                cancel_at_period_end: false
-            });
-
-            setUsage(usageData || {
-                quotes_generated: 0,
-                storage_used_gb: 0
-            });
-        } catch (error) {
-            console.error('Error fetching subscription:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleAddPayment = () => {
-        window.open('https://bolt.new/setup/stripe', '_blank');
-    };
-
-    const handleCancelSubscription = async () => {
-        if (!subscription?.id) {
-            alert('No active subscription found');
-            return;
-        }
-
-        try {
-            const { error } = await supabase
-                .from('subscriptions')
-                .update({
-                    cancel_at_period_end: true,
-                    status: 'canceled'
-                })
-                .eq('id', subscription.id);
-
-            if (error) throw error;
-
-            alert('Your subscription has been canceled. You will retain access until the end of your billing period.');
-            setShowCancelModal(false);
-            fetchSubscriptionData();
-        } catch (error) {
-            console.error('Error canceling subscription:', error);
-            alert('Failed to cancel subscription. Please try again.');
-        }
-    };
-
-    const handleReactivateSubscription = async () => {
-        if (!subscription?.id) return;
-
-        try {
-            const { error } = await supabase
-                .from('subscriptions')
-                .update({
-                    cancel_at_period_end: false,
-                    status: 'active'
-                })
-                .eq('id', subscription.id);
-
-            if (error) throw error;
-
-            alert('Your subscription has been reactivated!');
-            fetchSubscriptionData();
-        } catch (error) {
-            console.error('Error reactivating subscription:', error);
-            alert('Failed to reactivate subscription. Please try again.');
-        }
-    };
-
-    if (loading) {
-        return (
-            <div className="p-4 bg-gray-50 h-full flex items-center justify-center">
-                <div className="text-gray-600">Loading subscription...</div>
-            </div>
-        );
-    }
-
-    const planDetails = {
-        trial: { name: 'Free Trial', price: '$0', features: '10 professional quotes to experience the power of voice-to-quote' },
-        pro: { name: 'Pro Plan', price: '$29', features: 'Unlimited quotes, PDF generation, and all features' }
-    };
-
-    const currentPlan = planDetails[subscription?.plan_type || 'trial'];
-    const nextBillingDate = subscription?.current_period_end
-        ? new Date(subscription.current_period_end).toLocaleDateString()
-        : 'N/A';
-
-    const statusColors = {
-        active: 'bg-green-100 text-green-800',
-        canceled: 'bg-red-100 text-red-800',
-        expired: 'bg-gray-100 text-gray-800',
-        past_due: 'bg-yellow-100 text-yellow-800'
-    };
+    const planType = subscription?.plan_type || 'trial';
 
     return (
         <div className="p-4 bg-gray-50 h-full overflow-y-auto">
             <h2 className="text-2xl font-bold text-gray-800 mb-2">Subscription</h2>
-
             <div className="bg-white p-6 rounded-xl shadow-lg border-2 border-blue-100 mb-6">
                 <div className="flex justify-between items-start mb-4">
                     <div>
-                        <h3 className="text-lg font-bold text-blue-800">{currentPlan.name}</h3>
-                        <span className={`text-xs px-2 py-1 rounded-full font-bold ${statusColors[subscription?.status || 'active']}`}>
-                            {subscription?.status?.toUpperCase() || 'ACTIVE'}
-                        </span>
-                        {subscription?.cancel_at_period_end && (
-                            <div className="text-xs text-red-600 mt-1">
-                                Cancels on {nextBillingDate}
-                            </div>
-                        )}
+                        <h3 className="text-lg font-bold text-blue-800">{planType === 'pro' ? 'Pro Plan' : 'Free Trial'}</h3>
+                        <span className="text-xs px-2 py-1 rounded-full font-bold bg-green-100 text-green-800">ACTIVE</span>
                     </div>
                     <Star className="text-yellow-400 fill-current" size={24} />
                 </div>
-
-                <p className="text-gray-600 mb-4">{currentPlan.features}</p>
-
-                <div className="text-3xl font-bold text-gray-900 mb-1">
-                    {currentPlan.price}
-                    {subscription?.plan_type !== 'trial' && <span className="text-sm text-gray-500 font-normal">/mo</span>}
-                </div>
-
-                {subscription?.plan_type === 'pro' && (
-                    <p className="text-xs text-gray-400 mb-4">Next billing date: {nextBillingDate}</p>
-                )}
-
-                {subscription?.plan_type === 'trial' && (
-                    <div className="bg-blue-50 border-l-4 border-blue-500 p-3 rounded mb-4">
-                        <p className="text-sm text-blue-700">
-                            <strong>Free Trial Active!</strong> You have {10 - (usage?.quotes_generated || 0)} quotes remaining. Upgrade to Pro for unlimited quotes.
-                        </p>
-                    </div>
-                )}
-
-                {subscription?.payment_method_last4 && (
-                    <div className="bg-gray-50 p-3 rounded-lg mb-4">
-                        <div className="text-sm text-gray-600">
-                            Payment Method: {subscription.payment_method_brand} •••• {subscription.payment_method_last4}
-                        </div>
-                    </div>
-                )}
-
-                {subscription?.plan_type === 'trial' ? (
-                    <button
-                        onClick={handleAddPayment}
-                        className="w-full py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-bold rounded-lg hover:from-blue-700 hover:to-blue-800 flex items-center justify-center transition shadow-lg"
-                    >
-                        <Star size={18} className="mr-2"/>
-                        Upgrade to Pro - $29/month
-                    </button>
-                ) : (
-                    <button
-                        onClick={handleAddPayment}
-                        className="w-full py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 flex items-center justify-center transition mb-3"
-                    >
-                        <CreditCard size={18} className="mr-2"/>
-                        Update Payment Method
-                    </button>
-                )}
-
-                {subscription?.plan_type === 'pro' && subscription?.status === 'active' && !subscription?.cancel_at_period_end && (
-                    <button
-                        onClick={() => setShowCancelModal(true)}
-                        className="w-full py-3 bg-red-50 text-red-600 font-semibold rounded-lg hover:bg-red-100 transition"
-                    >
-                        Cancel Subscription
-                    </button>
-                )}
-
-                {subscription?.cancel_at_period_end && (
-                    <button
-                        onClick={handleReactivateSubscription}
-                        className="w-full py-3 bg-green-50 text-green-600 font-semibold rounded-lg hover:bg-green-100 transition"
-                    >
-                        Reactivate Subscription
-                    </button>
-                )}
+                <div className="text-3xl font-bold text-gray-900 mb-1">{planType === 'pro' ? '$29/mo' : 'Free'}</div>
+                <button className="w-full py-3 bg-blue-600 text-white font-bold rounded-lg mt-4">
+                    {planType === 'trial' ? 'Upgrade to Pro' : 'Manage Subscription'}
+                </button>
             </div>
-
-            <h3 className="font-bold text-gray-700 mb-3">Plan Usage</h3>
-            <div className="bg-white p-4 rounded-lg shadow-sm space-y-4">
-                <div>
-                    <div className="flex justify-between text-sm mb-1">
-                        <span>Quotes Generated</span>
-                        <span className="font-bold">
-                            {usage?.quotes_generated || 0} / {subscription?.plan_type === 'pro' ? 'Unlimited' : '10'}
-                        </span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div
-                            className="bg-blue-600 h-2 rounded-full"
-                            style={{ width: subscription?.plan_type === 'pro' ? '75%' : `${Math.min((usage?.quotes_generated || 0) / 10 * 100, 100)}%` }}
-                        ></div>
-                    </div>
-                </div>
-                <div>
-                    <div className="flex justify-between text-sm mb-1">
-                        <span>Cloud Storage</span>
-                        <span className="font-bold">{(usage?.storage_used_gb || 0).toFixed(1)}GB / 10GB</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div
-                            className="bg-purple-600 h-2 rounded-full"
-                            style={{ width: `${Math.min((usage?.storage_used_gb || 0) / 10 * 100, 100)}%` }}
-                        ></div>
-                    </div>
-                </div>
-            </div>
-
-            {showCancelModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white p-6 rounded-xl shadow-2xl max-w-md w-full mx-4">
-                        <h3 className="text-xl font-bold text-gray-800 mb-3">Cancel Subscription?</h3>
-                        <p className="text-gray-600 mb-4">
-                            Are you sure you want to cancel your subscription? You will retain access until {nextBillingDate}.
-                        </p>
-                        <div className="flex space-x-3">
-                            <button
-                                onClick={() => setShowCancelModal(false)}
-                                className="flex-1 py-2 px-4 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300 transition"
-                            >
-                                Keep Subscription
-                            </button>
-                            <button
-                                onClick={handleCancelSubscription}
-                                className="flex-1 py-2 px-4 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition"
-                            >
-                                Cancel
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };
-
-const InstallBanner = ({ onInstall, onDismiss }) => (
-    <div className="fixed top-0 left-0 right-0 bg-blue-600 text-white p-4 shadow-lg z-50 flex items-center justify-between">
-      <div className="flex items-center flex-1">
-        <Download size={24} className="mr-3 flex-shrink-0" />
-        <div className="flex-1">
-          <p className="font-semibold text-sm">Install Talk2Quote</p>
-          <p className="text-xs opacity-90">Get the best experience with our app</p>
-        </div>
-      </div>
-      <div className="flex gap-2 ml-2">
-        <button
-          onClick={onInstall}
-          className="bg-white text-blue-600 px-4 py-2 rounded-lg font-semibold text-sm hover:bg-blue-50"
-        >
-          Install
-        </button>
-        <button
-          onClick={onDismiss}
-          className="p-2 hover:bg-blue-700 rounded-lg"
-          aria-label="Dismiss"
-        >
-          <X size={20} />
-        </button>
-      </div>
-    </div>
-);
 
 const MenuDrawer = ({ isMenuOpen, navigateTo, handleLogout }) => (
     <div className={`fixed top-0 left-0 h-full w-64 bg-white shadow-2xl z-50 transform transition-transform duration-300 ${isMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
@@ -2112,11 +1474,7 @@ const Layout = ({ children, isMenuOpen, setIsMenuOpen, navigateTo, handleLogout 
           <div className="flex justify-center">
             <img src={T2Q_LOGO_URL} alt="Talk2Quote App" className="h-16 object-contain" />
           </div>
-          <button
-            onClick={() => navigateTo('referral')}
-            className="p-2 rounded-full text-purple-600 hover:bg-purple-50"
-            aria-label="Referral Program"
-          >
+          <button onClick={() => navigateTo('referral')} className="p-2 rounded-full text-purple-600 hover:bg-purple-50">
             <Gift size={24}/>
           </button>
       </header>
@@ -2126,7 +1484,6 @@ const Layout = ({ children, isMenuOpen, setIsMenuOpen, navigateTo, handleLogout 
     </div>
 );
 
-// --- Component: Main Application ---
 const App = () => {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -2135,17 +1492,11 @@ const App = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [loadingQuotes, setLoadingQuotes] = useState(false);
-  const [integrationUrl, setIntegrationUrl] = useState('');
 
-  const [deferredPrompt, setDeferredPrompt] = useState(null);
-  const [showInstallBanner, setShowInstallBanner] = useState(false);
-
-  // Speech Recognition State
   const [transcript, setTranscript] = useState('');
   const recognitionRef = useRef(null);
 
   const [lastQuoteAccepted, setLastQuoteAccepted] = useState(false);
-  const [connectedAccountingSoftware, setConnectedAccountingSoftware] = useState('');
 
   const [companyDetails, setCompanyDetails] = useState({
     name: 'Talk2Quote Services Pty Ltd',
@@ -2155,7 +1506,7 @@ const App = () => {
     phone: '(02) 8000 1234',
     website: 'www.talk2quote.app',
     address: '123 Business Rd, Sydney NSW 2000',
-    gstRegistered: true, // Default to true for AU
+    gstRegistered: true,
     bankName: 'ANZ',
     accountName: 'Talk2Quote Holdings',
     bsb: '012-345',
@@ -2165,109 +1516,43 @@ const App = () => {
 
   const [mockQuote, setMockQuote] = useState({
     id: 104,
-    clientName: '', 
-    clientEmail: '', 
+    clientName: '',
+    clientEmail: '',
     jobAddress: '',
-    scopeSummary: '', 
+    scopeSummary: '',
     paymentTerms: '7 Days EOM',
     status: 'Not Started',
     date: new Date().toLocaleDateString(),
     items: [],
     firestoreId: null
   });
-  
+
   const [previousQuotes, setPreviousQuotes] = useState([]);
 
-  // --- PWA INSTALL PROMPT ---
-  useEffect(() => {
-    const handleBeforeInstallPrompt = (e) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-      setShowInstallBanner(true);
-    };
-
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-      setShowInstallBanner(false);
-    }
-
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    };
-  }, []);
-
-  const handleInstallClick = async () => {
-    if (!deferredPrompt) return;
-
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-
-    if (outcome === 'accepted') {
-      setShowInstallBanner(false);
-    }
-
-    setDeferredPrompt(null);
-  };
-
-  // --- FIREBASE AUTHENTICATION ---
   useEffect(() => {
     const initAuth = async () => {
-      try {
-        await setPersistence(auth, browserLocalPersistence);
-      } catch (e) {
-        console.warn("Persistence setting failed, using default:", e);
-      }
+      try { await setPersistence(auth, browserLocalPersistence); } catch (e) { console.warn(e); }
     };
     initAuth();
 
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-        if (currentUser) {
-            setUser(currentUser);
-        } else {
-            setUser(null);
-        }
+        setUser(currentUser);
         setAuthLoading(false);
     });
     return () => unsubscribe();
   }, []);
 
-  // --- FIREBASE DATA SYNC ---
   useEffect(() => {
     if (!user) return;
     setLoadingQuotes(true);
 
-    // Fetch User Integration Settings
-    const fetchSettings = async () => {
-        try {
-            const settingsRef = doc(db, 'artifacts', APP_ID, 'users', user.uid, 'settings', 'integration');
-            const docSnap = await getDoc(settingsRef);
-            if (docSnap.exists()) {
-                const data = docSnap.data();
-                setConnectedAccountingSoftware(data.softwareId || '');
-                setIntegrationUrl(data.webhookUrl || '');
-            }
-        } catch (err) {
-            console.log("No settings found yet.");
-        }
-    };
-    fetchSettings();
+    const q = query(collection(db, 'users', user.uid, 'quotes'), orderBy('createdAt', 'desc'));
 
-    // Listen to the 'quotes' collection for this user
-    const q = query(collection(db, 'artifacts', APP_ID, 'users', user.uid, 'quotes'));
-    
     const unsubscribe = onSnapshot(q, (snapshot) => {
         const quotesData = snapshot.docs.map(doc => ({
             ...doc.data(),
             firestoreId: doc.id
         }));
-        
-        quotesData.sort((a, b) => {
-            const dateA = a.createdAt ? new Date(a.createdAt) : new Date(0);
-            const dateB = b.createdAt ? new Date(b.createdAt) : new Date(0);
-            return dateB - dateA;
-        });
-        
         setPreviousQuotes(quotesData);
         setLoadingQuotes(false);
     }, (error) => {
@@ -2278,16 +1563,8 @@ const App = () => {
     return () => unsubscribe();
   }, [user]);
 
-  const updateWebhookUrl = async (softwareId, url) => {
-      if (!user) return;
-      setIntegrationUrl(url);
-      const settingsRef = doc(db, 'artifacts', APP_ID, 'users', user.uid, 'settings', 'integration');
-      await setDoc(settingsRef, { softwareId, webhookUrl: url }, { merge: true });
-  };
-
   const isClientInfoSet = mockQuote.clientEmail && mockQuote.clientEmail.trim() !== '';
 
-  // --- SPEECH RECOGNITION SETUP ---
   useEffect(() => {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -2302,17 +1579,14 @@ const App = () => {
             }
             setTranscript(currentTranscript);
         };
-        
+
         recognitionRef.current.onerror = (event) => {
             console.error("Speech Error:", event.error);
             setIsRecording(false);
         };
-    } else {
-        console.log("Browser does not support Speech Recognition");
     }
   }, []);
 
-  // --- ACTIONS ---
   const handleLogin = async (email, password) => {
       await signInWithEmailAndPassword(auth, email, password);
       setCurrentPage('main');
@@ -2329,8 +1603,8 @@ const App = () => {
 
   const handleLogout = async () => {
     await signOut(auth);
-    setIsMenuOpen(false); 
-    setCurrentPage('login'); 
+    setIsMenuOpen(false);
+    setCurrentPage('login');
   };
 
   const navigateTo = (page) => {
@@ -2343,7 +1617,6 @@ const App = () => {
       navigateTo('review');
   };
 
-  // --- THE AI ENGINE & AUTO-SAVE ---
   const generateQuoteFromAI = async (finalText) => {
     setIsProcessing(true);
 
@@ -2355,35 +1628,20 @@ const App = () => {
 
     const prompt = `
       You are a precise transcription assistant for trade quotes.
-
       CRITICAL RULES:
       1. Convert the speech EXACTLY as spoken into a professional "Scope of Work" format
-      2. DO NOT invent, estimate, or add prices unless specifically mentioned in the audio
-      3. DO NOT invent quantities unless explicitly stated
-      4. ONLY extract line items that were clearly mentioned in the transcript
-      5. If prices/quantities were NOT mentioned, use 0 as placeholder
-      6. Stay faithful to what was actually said - no creativity or assumptions
-
+      2. DO NOT invent prices/quantities unless mentioned. Use 0 if unknown.
+      3. ONLY extract line items clearly mentioned.
       TRANSCRIPT: "${finalText}"
-
       JSON FORMAT REQUIRED:
-      {
-        "scopeSummary": "Exact transcription of what was said, formatted professionally",
-        "items": [
-          { "id": 1, "description": "Exactly what was mentioned", "qty": 0, "price": 0 }
-        ]
-      }
-
-      REMEMBER: If it wasn't said in the audio, don't include it. Accuracy over completeness.
+      { "scopeSummary": "Summary text", "items": [ { "id": 1, "description": "Item", "qty": 0, "price": 0 } ] }
     `;
 
     try {
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }]
-            })
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
         });
 
         const data = await response.json();
@@ -2391,9 +1649,6 @@ const App = () => {
         const jsonString = textResult.replace(/```json/g, '').replace(/```/g, '').trim();
         const parsedResult = JSON.parse(jsonString);
 
-        // --- NEW: AUTO-SAVE DRAFT TO FIRESTORE ---
-        
-        // Safety: Ensure AI items are valid numbers/strings before saving to prevent React crashes
         const safeItems = (parsedResult.items || []).map((item, index) => ({
             ...item,
             id: index + 1,
@@ -2407,7 +1662,7 @@ const App = () => {
             const draftData = {
                 clientName: mockQuote.clientName,
                 clientEmail: mockQuote.clientEmail,
-                jobAddress: '123 Oak St, Sydney NSW (Detected via GPS)', // Using mock GPS for now
+                jobAddress: '123 Oak St, Sydney NSW (Detected via GPS)',
                 scopeSummary: parsedResult.scopeSummary,
                 items: safeItems,
                 paymentTerms: '7 Days EOM',
@@ -2416,10 +1671,8 @@ const App = () => {
                 displayDate: new Date().toLocaleDateString(),
                 total: calculateQuoteTotal(safeItems)
             };
-            
-            const docRef = await addDoc(collection(db, 'artifacts', APP_ID, 'users', user.uid, 'quotes'), draftData);
+            const docRef = await addDoc(collection(db, 'users', user.uid, 'quotes'), draftData);
             newDocId = docRef.id;
-            console.log("Draft auto-saved with ID:", newDocId);
         }
 
         setMockQuote(prev => ({
@@ -2428,74 +1681,52 @@ const App = () => {
             status: 'Review Pending',
             scopeSummary: parsedResult.scopeSummary,
             items: safeItems,
-            firestoreId: newDocId // Link local state to DB doc
+            firestoreId: newDocId
         }));
 
         setIsProcessing(false);
-        setTranscript(''); 
+        setTranscript('');
         navigateTo('review');
 
     } catch (error) {
         console.error("AI Error:", error);
-        alert("Error connecting to AI. Please check your API Key or try again.");
+        alert("Error connecting to AI. Please check your API Key.");
         setIsProcessing(false);
     }
   };
 
   const handleRecordToggle = (e) => {
-    // PREVENT PAGE REFRESH ON CLICK
     if (e) e.preventDefault();
-    
     if (!isRecording && !isClientInfoSet) return;
-    
+
     if (!isRecording) {
       setTranscript('');
       setIsRecording(true);
-      try {
-        recognitionRef.current?.start();
-      } catch (err) {
-        console.error("Mic start error:", err);
-        setIsRecording(false);
-      }
+      try { recognitionRef.current?.start(); } catch (err) { setIsRecording(false); }
     } else {
       setIsRecording(false);
-      try {
-        recognitionRef.current?.stop();
-      } catch (err) {
-        console.error("Mic stop error:", err);
-      }
-      setTimeout(() => {
-          generateQuoteFromAI(transcript);
-      }, 500);
+      try { recognitionRef.current?.stop(); } catch (err) { console.error(err); }
+      setTimeout(() => { generateQuoteFromAI(transcript); }, 500);
     }
   };
 
-  // --- UPDATE DATABASE ON SEND ---
   const handleQuoteSent = async () => {
-    if (!user) {
-        alert("You must be logged in to save.");
-        return;
-    }
-
+    if (!user) { alert("You must be logged in to save."); return; }
     const total = calculateQuoteTotal(mockQuote.items);
-    
+
     try {
         if (mockQuote.firestoreId) {
-            // Update the existing Draft
-            const quoteRef = doc(db, 'artifacts', APP_ID, 'users', user.uid, 'quotes', mockQuote.firestoreId);
+            const quoteRef = doc(db, 'users', user.uid, 'quotes', mockQuote.firestoreId);
             await updateDoc(quoteRef, {
                 status: 'Sent',
                 total: total,
-                // Update any fields changed during review
                 clientName: mockQuote.clientName,
                 clientEmail: mockQuote.clientEmail,
                 jobAddress: mockQuote.jobAddress,
                 scopeSummary: mockQuote.scopeSummary,
                 items: mockQuote.items
             });
-            console.log("Quote Updated to Sent!");
         } else {
-            // Fallback: Create new if no draft exists
             const newQuoteData = {
                 ...mockQuote,
                 total: total,
@@ -2503,40 +1734,36 @@ const App = () => {
                 createdAt: new Date().toISOString(),
                 displayDate: new Date().toLocaleDateString()
             };
-            await addDoc(collection(db, 'artifacts', APP_ID, 'users', user.uid, 'quotes'), newQuoteData);
-            console.log("Quote Created directly as Sent!");
+            await addDoc(collection(db, 'users', user.uid, 'quotes'), newQuoteData);
         }
-        
+
         setLastQuoteAccepted(true);
         setTimeout(() => setLastQuoteAccepted(false), 3000);
 
         setMockQuote({
             id: Math.floor(Math.random() * 10000),
-            clientName: '', clientEmail: '', jobAddress: '', scopeSummary: '', 
+            clientName: '', clientEmail: '', jobAddress: '', scopeSummary: '',
             paymentTerms: '7 Days EOM', status: 'Not Started', date: new Date().toLocaleDateString(),
             items: [],
             firestoreId: null
         });
 
-        navigateTo('share'); 
+        navigateTo('share');
 
     } catch (error) {
         console.error("Error saving quote: ", error);
-        alert("Failed to save quote. Check console.");
+        alert("Failed to save quote.");
     }
   }
 
   const handleItemChange = (id, field, value) => {
     const newItems = mockQuote.items.map(item => {
-      if (item.id === id) {
-        return { ...item, [field]: value };
-      }
+      if (item.id === id) return { ...item, [field]: value };
       return item;
     });
     setMockQuote({ ...mockQuote, items: newItems });
   };
 
-  // While checking auth status, show nothing or a loader
   if (authLoading) return <div className="h-screen flex items-center justify-center"><Loader className="animate-spin text-blue-600"/></div>;
 
   let content;
@@ -2544,59 +1771,57 @@ const App = () => {
       content = <LoginScreen handleLogin={handleLogin} handleSignUp={handleSignUp} handlePasswordReset={handlePasswordReset} />;
   } else {
     switch (currentPage) {
-      case 'main': 
-        content = <MainScreen 
-            mockQuote={mockQuote} 
-            setMockQuote={setMockQuote} 
-            isClientInfoSet={isClientInfoSet} 
-            handleRecordToggle={handleRecordToggle} 
-            isRecording={isRecording} 
-            isProcessing={isProcessing} 
-            transcript={transcript} 
-        />; 
+      case 'main':
+        content = <MainScreen
+            mockQuote={mockQuote}
+            setMockQuote={setMockQuote}
+            isClientInfoSet={isClientInfoSet}
+            handleRecordToggle={handleRecordToggle}
+            isRecording={isRecording}
+            isProcessing={isProcessing}
+            transcript={transcript}
+        />;
         break;
-      case 'review': 
-        content = <ReviewScreen 
-            mockQuote={mockQuote} 
-            setMockQuote={setMockQuote} 
-            handleItemChange={handleItemChange} 
-            navigateTo={navigateTo} 
-            handleQuoteSent={handleQuoteSent} 
-        />; 
+      case 'review':
+        content = <ReviewScreen
+            mockQuote={mockQuote}
+            setMockQuote={setMockQuote}
+            handleItemChange={handleItemChange}
+            navigateTo={navigateTo}
+            handleQuoteSent={handleQuoteSent}
+        />;
         break;
-      case 'pdfPreview': 
-        content = <PdfPreviewScreen 
-            mockQuote={mockQuote} 
-            companyDetails={companyDetails} 
-            navigateTo={navigateTo} 
-            handleQuoteSent={handleQuoteSent} 
-        />; 
+      case 'pdfPreview':
+        content = <PdfPreviewScreen
+            mockQuote={mockQuote}
+            companyDetails={companyDetails}
+            navigateTo={navigateTo}
+            handleQuoteSent={handleQuoteSent}
+        />;
         break;
-      case 'share': 
-        content = <ShareScreen 
-            connectedAccountingSoftware={connectedAccountingSoftware} 
-            mockQuote={mockQuote} 
-            handleQuoteSent={handleQuoteSent} 
-            navigateTo={navigateTo} 
-            integrationUrl={integrationUrl}
-        />; 
+      case 'share':
+        content = <ShareScreen
+            mockQuote={mockQuote}
+            handleQuoteSent={handleQuoteSent}
+            navigateTo={navigateTo}
+        />;
         break;
-      case 'history': 
-        content = <HistoryScreen 
-            previousQuotes={previousQuotes} 
-            lastQuoteAccepted={lastQuoteAccepted} 
+      case 'history':
+        content = <HistoryScreen
+            previousQuotes={previousQuotes}
+            lastQuoteAccepted={lastQuoteAccepted}
             loadingQuotes={loadingQuotes}
             onSelectQuote={handleSelectQuote}
-        />; 
-        break; 
-      case 'companyDetails': 
-        content = <CompanyDetailsScreen 
-            companyDetails={companyDetails} 
-            setCompanyDetails={setCompanyDetails} 
-        />; 
+        />;
+        break;
+      case 'companyDetails':
+        content = <CompanyDetailsScreen
+            companyDetails={companyDetails}
+            setCompanyDetails={setCompanyDetails}
+        />;
         break;
       case 'subscription':
-        content = <SubscriptionScreen user={user} supabase={db} />;
+        content = <SubscriptionScreen user={user} />;
         break;
       case 'settings':
         content = <SettingsScreen navigateTo={navigateTo} user={user} />;
@@ -2609,38 +1834,28 @@ const App = () => {
         break;
       case 'referral':
         content = <ReferralScreen />;
-        break; 
-      case 'accounting':
-        content = <AccountingScreen user={user} supabase={db} />;
         break;
-      default: 
-        content = <MainScreen 
-            mockQuote={mockQuote} 
-            setMockQuote={setMockQuote} 
-            isClientInfoSet={isClientInfoSet} 
-            handleRecordToggle={handleRecordToggle} 
-            isRecording={isRecording} 
-            isProcessing={isProcessing} 
-            transcript={transcript} 
+      case 'accounting':
+        content = <AccountingScreen user={user} />;
+        break;
+      default:
+        content = <MainScreen
+            mockQuote={mockQuote}
+            setMockQuote={setMockQuote}
+            isClientInfoSet={isClientInfoSet}
+            handleRecordToggle={handleRecordToggle}
+            isRecording={isRecording}
+            isProcessing={isProcessing}
+            transcript={transcript}
         />;
     }
   }
 
-  // If user is logged in but on login page, redirect logic is handled in handleLogin,
-  // but if they refresh, the useEffect sets user, and we need to show content.
   if (user && currentPage === 'login') {
-      // Small side effect to push them to main if they are already authed
       setTimeout(() => setCurrentPage('main'), 0);
   }
 
   return (
-    <>
-      {showInstallBanner && user && (
-        <InstallBanner
-          onInstall={handleInstallClick}
-          onDismiss={() => setShowInstallBanner(false)}
-        />
-      )}
       <Layout
           isMenuOpen={isMenuOpen}
           setIsMenuOpen={setIsMenuOpen}
@@ -2649,7 +1864,6 @@ const App = () => {
       >
           {content}
       </Layout>
-    </>
   );
 };
 
