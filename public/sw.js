@@ -1,4 +1,4 @@
-const CACHE_NAME = 'talk2quote-v2';
+const CACHE_NAME = 'talk2quote-v3';
 const RUNTIME_CACHE = 'talk2quote-runtime';
 
 const PRECACHE_URLS = [
