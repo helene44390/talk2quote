@@ -278,7 +278,7 @@ const LoginScreen = ({ handleLogin, handleSignUp, handlePasswordReset }) => {
         <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-6">
             <div className="w-full max-w-sm p-8 space-y-6 bg-white shadow-xl rounded-xl">
                 <AppHeader />
-                <p className="text-center text-gray-500 mt-4">Business estimates, simplified.</p>
+                <h1 className="text-center text-2xl font-bold text-gray-800 mt-4">Talk2Quote: Turn Conversations into Quotes Instantly</h1>
 
                 {error && <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg text-center font-medium border border-red-200">{error}</div>}
 
@@ -298,7 +298,7 @@ const LoginScreen = ({ handleLogin, handleSignUp, handlePasswordReset }) => {
                 </div>
 
                 <div className="space-y-3 pt-2">
-                    <button onClick={onLogin} disabled={loading} className="w-full py-3 text-lg font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-md flex justify-center items-center">
+                    <button onClick={onLogin} disabled={loading} className="w-full py-3 text-lg font-semibold text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 shadow-md flex justify-center items-center">
                         {loading ? <Loader className="animate-spin" size={24}/> : "Sign In"}
                     </button>
 
