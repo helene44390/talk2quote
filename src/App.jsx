@@ -28,6 +28,7 @@ import {
   Menu, Mic, Settings, History, Building, Check, Share2, Mail, MessageSquare,
   Home, User, CreditCard, Save, Pencil, Phone, FileText, X, ChevronRight, Star, Shield, Gift, TrendingUp, Loader, LogOut, ArrowLeft, Printer, Upload, Download
 } from 'lucide-react';
+import { generatePDFBase64, downloadPDF } from './utils/pdfGenerator';
 
 const firebaseConfig = {
   apiKey: "AIzaSyCz6yEiW0VhnNliNFsH0y-9DSL2yRc081c",
@@ -823,6 +824,10 @@ const PdfPreviewScreen = ({ mockQuote, companyDetails, navigateTo, handleQuoteSe
         window.print();
     };
 
+    const handleDownloadPDF = () => {
+        downloadPDF(mockQuote, companyDetails);
+    };
+
     const total = calculateQuoteTotal(mockQuote.items);
     const gstAmount = companyDetails.gstRegistered ? (total / 11) : 0;
     const subTotal = companyDetails.gstRegistered ? (total - gstAmount) : total;
@@ -946,11 +951,14 @@ const PdfPreviewScreen = ({ mockQuote, companyDetails, navigateTo, handleQuoteSe
         </div>
 
         <div className="bg-white p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] space-y-2 print:hidden">
-            <button onClick={handlePrint} className="w-full py-3 text-lg font-semibold text-blue-600 bg-white border-2 border-blue-600 rounded-lg hover:bg-blue-50 flex items-center justify-center">
-                <Printer size={20} className="mr-2"/> Download / Print PDF
+            <button onClick={handleDownloadPDF} className="w-full py-3 text-lg font-semibold text-blue-600 bg-white border-2 border-blue-600 rounded-lg hover:bg-blue-50 flex items-center justify-center">
+                <Download size={20} className="mr-2"/> Download PDF
+            </button>
+            <button onClick={handlePrint} className="w-full py-3 text-lg font-semibold text-gray-600 bg-white border-2 border-gray-300 rounded-lg hover:bg-gray-50 flex items-center justify-center">
+                <Printer size={20} className="mr-2"/> Print
             </button>
             <button onClick={handleQuoteSent} className="w-full py-3 text-lg font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 shadow-lg flex items-center justify-center">
-                Confirm & Share Link
+                Confirm & Share
             </button>
         </div>
 
@@ -1087,11 +1095,54 @@ const SecurityScreen = ({ navigateTo, user }) => {
 const SettingsScreen = ({ navigateTo, user }) => {
     const [taxRate, setTaxRate] = useState('10');
     const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        if (!user) return;
+
+        const loadSettings = async () => {
+            try {
+                const settingsRef = doc(db, 'users', user.uid, 'settings', 'preferences');
+                const settingsSnap = await getDoc(settingsRef);
+                if (settingsSnap.exists()) {
+                    const data = settingsSnap.data();
+                    setTaxRate(data.taxRate || '10');
+                    setNotificationsEnabled(data.notificationsEnabled !== false);
+                }
+            } catch (error) {
+                console.error('Error loading settings:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadSettings();
+    }, [user]);
+
+    const saveSettings = async (updates) => {
+        if (!user) return;
+        try {
+            const settingsRef = doc(db, 'users', user.uid, 'settings', 'preferences');
+            await setDoc(settingsRef, updates, { merge: true });
+        } catch (error) {
+            console.error('Error saving settings:', error);
+        }
+    };
 
     const handleProfileClick = () => { navigateTo('profile'); };
     const handleSecurityClick = () => { navigateTo('security'); };
-    const handleTaxRateChange = (e) => { setTaxRate(e.target.value); };
-    const toggleNotifications = () => { setNotificationsEnabled(!notificationsEnabled); };
+
+    const handleTaxRateChange = (e) => {
+        const newRate = e.target.value;
+        setTaxRate(newRate);
+        saveSettings({ taxRate: newRate });
+    };
+
+    const toggleNotifications = () => {
+        const newValue = !notificationsEnabled;
+        setNotificationsEnabled(newValue);
+        saveSettings({ notificationsEnabled: newValue });
+    };
 
     return (
         <div className="p-4 bg-gray-50 h-full overflow-y-auto">
@@ -1266,8 +1317,8 @@ const AccountingScreen = ({ user }) => {
     );
 };
 
-const ShareScreen = ({ connectedAccountingSoftware, mockQuote, handleQuoteSent, navigateTo, integrationUrl }) => {
-    const [sendingToAcc, setSendingToAcc] = useState(false);
+const ShareScreen = ({ mockQuote, handleQuoteSent, navigateTo, companyDetails, user }) => {
+    const [sendingEmail, setSendingEmail] = useState(false);
 
     const shareText = `Here is the quote for ${mockQuote.clientName || 'your project'}. Total: $${calculateQuoteTotal(mockQuote.items).toFixed(2)}`;
 
@@ -1276,8 +1327,40 @@ const ShareScreen = ({ connectedAccountingSoftware, mockQuote, handleQuoteSent, 
         window.open(url, '_blank');
     };
 
-    const handleShareEmail = () => {
-        window.location.href = `mailto:?subject=${encodeURIComponent("Quote")}&body=${encodeURIComponent(shareText)}`;
+    const handleShareEmail = async () => {
+        if (!mockQuote.clientEmail) {
+            alert('Client email is required to send the quote');
+            return;
+        }
+
+        setSendingEmail(true);
+        try {
+            const pdfBase64 = generatePDFBase64(mockQuote, companyDetails);
+            const sendQuoteEmail = httpsCallable(functions, 'sendQuoteEmail');
+
+            await sendQuoteEmail({
+                recipientEmail: mockQuote.clientEmail,
+                recipientName: mockQuote.clientName,
+                quoteData: {
+                    id: mockQuote.id,
+                    date: mockQuote.date,
+                    clientName: mockQuote.clientName,
+                    clientEmail: mockQuote.clientEmail,
+                    jobAddress: mockQuote.jobAddress,
+                    scopeSummary: mockQuote.scopeSummary,
+                    items: mockQuote.items
+                },
+                pdfBase64,
+                companyDetails
+            });
+
+            alert('Quote sent successfully via email!');
+        } catch (error) {
+            console.error('Error sending email:', error);
+            alert(`Failed to send email: ${error.message || 'Unknown error'}`);
+        } finally {
+            setSendingEmail(false);
+        }
     };
 
     const handleShareSMS = () => {
@@ -1291,8 +1374,14 @@ const ShareScreen = ({ connectedAccountingSoftware, mockQuote, handleQuoteSent, 
           <h2 className="text-2xl font-bold text-gray-800 mb-2">Ready to Share</h2>
           <p className="text-sm text-gray-500 mb-8">Your quote is ready.</p>
           <div className="space-y-4">
+            <ShareOption
+                icon={sendingEmail ? <Loader size={24} className="animate-spin"/> : <Mail size={24}/>}
+                label={sendingEmail ? "Sending..." : "Email with PDF"}
+                color={sendingEmail ? "bg-gray-400" : "bg-red-500"}
+                onClick={handleShareEmail}
+                disabled={sendingEmail}
+            />
             <ShareOption icon={<MessageSquare size={24}/>} label="WhatsApp" color="bg-green-500" onClick={handleShareWhatsApp} />
-            <ShareOption icon={<Mail size={24}/>} label="Email" color="bg-red-500" onClick={handleShareEmail} />
             <ShareOption icon={<Phone size={24}/>} label="SMS" color="bg-blue-500" onClick={handleShareSMS} />
 
             <button onClick={handleQuoteSent} className="w-full py-3 text-lg font-semibold text-blue-600 border border-blue-600 rounded-lg hover:bg-blue-50 mt-6">New Quote</button>
@@ -1302,26 +1391,49 @@ const ShareScreen = ({ connectedAccountingSoftware, mockQuote, handleQuoteSent, 
     );
 };
 
-const ReferralScreen = () => (
-    <div className="p-4 bg-gray-50 h-full overflow-y-auto pb-6">
-        <h2 className="text-xl sm:text-2xl font-bold text-blue-600 mb-3 flex items-center"><Gift size={20} className="mr-2"/> Referral Program</h2>
-        <p className="text-sm text-gray-600 mb-4">Refer your industry friends and earn discounts!</p>
+const ReferralScreen = ({ user }) => {
+    const [copied, setCopied] = useState(false);
+    const referralCode = user?.uid ? `TQ-${user.uid.substring(0, 8).toUpperCase()}` : 'TQ-USER-001';
 
-        <div className="bg-white p-4 sm:p-6 rounded-xl shadow-lg border-2 border-green-100 mb-4 text-center">
-            <h3 className="text-2xl sm:text-3xl font-bold text-green-700 mb-1">$20 OFF</h3>
-            <p className="text-xs sm:text-sm font-semibold text-gray-700 mb-3">For every successful signup.</p>
-            <div className="border-t pt-3">
-                <p className="text-xs text-gray-500 mb-2">Your Unique Referral Code:</p>
-                <div className="bg-gray-100 p-2 sm:p-3 rounded-lg flex justify-between items-center">
-                    <span className="font-mono font-bold text-base sm:text-lg text-gray-800 select-all">TQ-USER-001</span>
-                    <button className="text-blue-500 hover:text-blue-700 text-xs sm:text-sm font-semibold ml-2">Copy</button>
+    const handleCopy = async () => {
+        try {
+            await navigator.clipboard.writeText(referralCode);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        } catch (err) {
+            console.error('Failed to copy:', err);
+        }
+    };
+
+    return (
+        <div className="p-4 bg-gray-50 h-full overflow-y-auto pb-6">
+            <h2 className="text-xl sm:text-2xl font-bold text-blue-600 mb-3 flex items-center"><Gift size={20} className="mr-2"/> Referral Program</h2>
+            <p className="text-sm text-gray-600 mb-4">Refer your industry friends and earn discounts!</p>
+
+            <div className="bg-white p-4 sm:p-6 rounded-xl shadow-lg border-2 border-green-100 mb-4 text-center">
+                <h3 className="text-2xl sm:text-3xl font-bold text-green-700 mb-1">$20 OFF</h3>
+                <p className="text-xs sm:text-sm font-semibold text-gray-700 mb-3">For every successful signup.</p>
+                <div className="border-t pt-3">
+                    <p className="text-xs text-gray-500 mb-2">Your Unique Referral Code:</p>
+                    <div className="bg-gray-100 p-2 sm:p-3 rounded-lg flex justify-between items-center">
+                        <span className="font-mono font-bold text-base sm:text-lg text-gray-800 select-all">{referralCode}</span>
+                        <button
+                            onClick={handleCopy}
+                            className={`text-xs sm:text-sm font-semibold ml-2 px-3 py-1 rounded ${copied ? 'bg-green-100 text-green-700' : 'text-blue-500 hover:text-blue-700'}`}
+                        >
+                            {copied ? 'Copied!' : 'Copy'}
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
-);
+    );
+};
 
-const CompanyDetailsScreen = ({ companyDetails, setCompanyDetails }) => {
+const CompanyDetailsScreen = ({ companyDetails, setCompanyDetails, user }) => {
+    const [saving, setSaving] = useState(false);
+    const [saveSuccess, setSaveSuccess] = useState(false);
+
     const handleLogoUpload = (e) => {
         const file = e.target.files[0];
         if (file) {
@@ -1330,6 +1442,23 @@ const CompanyDetailsScreen = ({ companyDetails, setCompanyDetails }) => {
                 setCompanyDetails(prev => ({ ...prev, logoUrl: reader.result }));
             };
             reader.readAsDataURL(file);
+        }
+    };
+
+    const handleSaveDetails = async () => {
+        if (!user) return;
+
+        setSaving(true);
+        try {
+            const companyRef = doc(db, 'users', user.uid, 'settings', 'company');
+            await setDoc(companyRef, companyDetails);
+            setSaveSuccess(true);
+            setTimeout(() => setSaveSuccess(false), 3000);
+        } catch (error) {
+            console.error('Error saving company details:', error);
+            alert('Failed to save company details');
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -1387,8 +1516,25 @@ const CompanyDetailsScreen = ({ companyDetails, setCompanyDetails }) => {
           </div>
         </div>
         <div className="pt-4 border-t flex justify-end">
-            <button className="py-2 px-4 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 flex items-center shadow-md">
-                <Save size={18} className="mr-2"/> Save Details
+            {saveSuccess && (
+                <span className="text-green-600 text-sm font-semibold mr-4 flex items-center">
+                    <Check size={16} className="mr-1"/> Saved!
+                </span>
+            )}
+            <button
+                onClick={handleSaveDetails}
+                disabled={saving}
+                className="py-2 px-4 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 flex items-center shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+                {saving ? (
+                    <>
+                        <Loader size={18} className="mr-2 animate-spin"/> Saving...
+                    </>
+                ) : (
+                    <>
+                        <Save size={18} className="mr-2"/> Save Details
+                    </>
+                )}
             </button>
         </div>
       </div>
@@ -1612,6 +1758,24 @@ const App = () => {
     return () => unsubscribe();
   }, [user]);
 
+  useEffect(() => {
+    if (!user) return;
+
+    const loadCompanyDetails = async () => {
+      try {
+        const companyRef = doc(db, 'users', user.uid, 'settings', 'company');
+        const companySnap = await getDoc(companyRef);
+        if (companySnap.exists()) {
+          setCompanyDetails(prev => ({ ...prev, ...companySnap.data() }));
+        }
+      } catch (error) {
+        console.error('Error loading company details:', error);
+      }
+    };
+
+    loadCompanyDetails();
+  }, [user]);
+
   const isClientInfoSet = mockQuote.clientEmail && mockQuote.clientEmail.trim() !== '';
 
   useEffect(() => {
@@ -1832,6 +1996,8 @@ const App = () => {
             mockQuote={mockQuote}
             handleQuoteSent={handleQuoteSent}
             navigateTo={navigateTo}
+            companyDetails={companyDetails}
+            user={user}
         />;
         break;
       case 'history':
@@ -1846,6 +2012,7 @@ const App = () => {
         content = <CompanyDetailsScreen
             companyDetails={companyDetails}
             setCompanyDetails={setCompanyDetails}
+            user={user}
         />;
         break;
       case 'subscription':
@@ -1861,7 +2028,7 @@ const App = () => {
         content = <SecurityScreen navigateTo={navigateTo} user={user} />;
         break;
       case 'referral':
-        content = <ReferralScreen />;
+        content = <ReferralScreen user={user} />;
         break;
       case 'accounting':
         content = <AccountingScreen user={user} />;
