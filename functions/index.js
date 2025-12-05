@@ -10,6 +10,7 @@ exports.generateQuote = functions.https.onRequest((req, res) => {
     try {
       const { text } = req.body;
 
+      // Get API Key from environment variables
       const apiKey = process.env.GEMINI_API_KEY || functions.config().gemini.api_key;
 
       if (!apiKey) {
@@ -17,14 +18,11 @@ exports.generateQuote = functions.https.onRequest((req, res) => {
         return;
       }
 
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ contents: [{ parts: [{ text: text }] }] })
-        }
-      );
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contents: [{ parts: [{ text: text }] }] })
+      });
 
       const data = await response.json();
       res.status(200).send(data);
