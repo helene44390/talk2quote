@@ -1,5 +1,6 @@
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
+const cors = require('cors')({ origin: true });
 
 admin.initializeApp();
 
@@ -96,4 +97,10 @@ exports.generateQuote = functions.https.onCall(async (data, context) => {
       'Failed to process request with AI: ' + error.message
     );
   }
+});
+
+exports.helloWorld = functions.https.onRequest((request, response) => {
+  cors(request, response, () => {
+    response.send({ data: "Hello from a Secure Backend!" });
+  });
 });
