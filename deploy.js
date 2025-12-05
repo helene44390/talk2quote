@@ -6,38 +6,43 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// 1. Locate the Key File
+// 1. Locate the Key File (Absolute Path)
 const keyFileName = 'firebase-key.json';
-const keyPath = path.resolve(__dirname, keyFileName);
+const keyPath = path.resolve(process.cwd(), keyFileName);
 
-console.log(`🔒 Authenticating with: ${keyPath}`);
+console.log('🔒 Authentication Mode: Service Account');
+console.log(`🔑 Key Path: ${keyPath}`);
 
+// 2. Verify the file exists
 if (!fs.existsSync(keyPath)) {
-  console.error(`❌ ERROR: ${keyFileName} not found! Please upload it.`);
+  console.error(`❌ CRITICAL ERROR: '${keyFileName}' is missing from the root folder.`);
+  console.error(`   Action Required: Drag and drop your json key file here and rename it to '${keyFileName}'.`);
   process.exit(1);
 }
 
-// 2. Prepare the Environment (Force-feeding the key)
+// 3. Construct the Environment Object
+// We clone the current environment and FORCE the credential variable in.
 const deployEnv = {
   ...process.env,
   GOOGLE_APPLICATION_CREDENTIALS: keyPath
 };
 
 try {
-  // 3. Build First
+  // 4. Build the App
   console.log('📦 Building app...');
   execSync('npm run build', { stdio: 'inherit' });
 
-  // 4. Deploy using the Explicit Environment
-  console.log('🚀 Deploying to Firebase...');
-  // We use the local npx path to avoid shell interference
+  // 5. Deploy with Explicit Environment
+  console.log('🚀 Deploying to Firebase (Hosting Only)...');
+
+  // NOTICE: We pass 'env: deployEnv' to ensure the key is NOT stripped.
   execSync('npx firebase-tools deploy --only hosting --force', {
     stdio: 'inherit',
-    env: deployEnv  // <--- THIS IS THE FIX
+    env: deployEnv
   });
 
-  console.log('✅ Deployment Complete!');
+  console.log('✅ DEPLOYMENT SUCCESSFUL!');
 } catch (error) {
-  console.error('❌ Failed to deploy.');
+  console.error('❌ Deployment failed. Check the logs above.');
   process.exit(1);
 }
