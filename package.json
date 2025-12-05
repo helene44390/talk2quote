@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "deploy:functions": "cd functions && npm install && cd .. && firebase deploy --only functions",
-    "setup:functions": "cd functions && npm install"
+    "setup:functions": "cd functions && npm install",
+    "deploy:backend": "export GOOGLE_APPLICATION_CREDENTIALS=\"$(pwd)/firebase-key.json\" && npx firebase-tools deploy --only functions --force --debug"
   },
   "dependencies": {
     "firebase": "^10.7.1",
