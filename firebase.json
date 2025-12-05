@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "talk2quote-app",
     "public": "dist",
     "ignore": [
       "firebase.json",
