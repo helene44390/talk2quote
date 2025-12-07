@@ -532,13 +532,13 @@ const SignUpScreen = ({ handleSignUp, onBack }) => {
 };
 
 const MainScreen = ({ mockQuote, setMockQuote, isClientInfoSet, handleRecordToggle, isRecording, isProcessing, transcript }) => (
-    <div className="flex flex-col h-full p-4 bg-gray-50">
-      <div className="text-center mb-6">
+    <div className="flex flex-col h-full p-3 bg-gray-50">
+      <div className="text-center mb-3">
         <h2 className="text-2xl font-bold text-gray-800 mb-1">Create a Quote</h2>
         <p className="text-sm text-gray-500">Start by entering the client's essential details.</p>
       </div>
 
-      <div className="mb-8 p-4 bg-white rounded-xl shadow-lg border border-gray-100 space-y-4">
+      <div className="mb-4 p-3 bg-white rounded-xl shadow-lg border border-gray-100 space-y-3">
         <h3 className="text-lg font-semibold text-blue-700 mb-3">Client Details</h3>
         <InputField
             label="Client Name (Optional)"
@@ -563,22 +563,22 @@ const MainScreen = ({ mockQuote, setMockQuote, isClientInfoSet, handleRecordTogg
         </div>
       </div>
 
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-6">
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 mb-3">
         <p className="text-xs text-blue-800 font-medium mb-1">Quick tip:</p>
         <p className="text-xs text-blue-700">Speak clearly and include all necessary details: client name, job address, scope of work, quantities, and pricing. The more detail you provide, the better your quote will be!</p>
       </div>
 
-      <div className="flex flex-col justify-center items-center mt-auto mb-8 mx-auto">
+      <div className="flex flex-col justify-center items-center mt-auto mb-4 mx-auto">
         <div
           onClick={handleRecordToggle}
-          className={`w-32 h-32 flex items-center justify-center rounded-full transition-all duration-300 transform shadow-2xl relative cursor-pointer ${isRecording ? 'bg-red-500 scale-110 animate-pulse' : 'bg-blue-600 hover:bg-blue-700'} text-white ${!isClientInfoSet && 'opacity-50 cursor-not-allowed'}`}
+          className={`w-28 h-28 flex items-center justify-center rounded-full transition-all duration-300 transform shadow-2xl relative cursor-pointer ${isRecording ? 'bg-red-500 scale-110 animate-pulse' : 'bg-blue-600 hover:bg-blue-700'} text-white ${!isClientInfoSet && 'opacity-50 cursor-not-allowed'}`}
           role="button"
           tabIndex={0}
         >
           {isProcessing ? (
-             <Loader size={48} className="animate-spin text-white z-10" />
+             <Loader size={44} className="animate-spin text-white z-10" />
           ) : (
-             <Mic size={48} className={isRecording ? 'text-white z-10' : 'z-10'} />
+             <Mic size={44} className={isRecording ? 'text-white z-10' : 'z-10'} />
           )}
           {isRecording && <div className="absolute inset-0 border-4 border-red-300 rounded-full animate-ping opacity-75"></div>}
         </div>
@@ -1640,13 +1640,13 @@ const Layout = ({ children, isMenuOpen, setIsMenuOpen, navigateTo, handleLogout 
     <div className="flex flex-col h-screen max-w-md mx-auto bg-gray-100 shadow-2xl">
       <header className="flex items-center justify-between p-2 bg-white border-b border-gray-200 shadow-sm sticky top-0 z-40">
           <button onClick={() => setIsMenuOpen(true)} className="p-2 rounded-full text-blue-600 hover:bg-blue-50" aria-label="Open Menu">
-            <Menu size={24} />
+            <Menu size={32} />
           </button>
           <div className="flex justify-center">
             <img src={T2Q_LOGO_URL} alt="Talk2Quote App" className="h-16 object-contain" />
           </div>
           <button onClick={() => navigateTo('referral')} className="p-2 rounded-full text-purple-600 hover:bg-purple-50">
-            <Gift size={24}/>
+            <Gift size={32}/>
           </button>
       </header>
       <main className="flex-grow overflow-y-auto">{children}</main>
