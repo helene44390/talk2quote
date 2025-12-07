@@ -1643,7 +1643,7 @@ const Layout = ({ children, isMenuOpen, setIsMenuOpen, navigateTo, handleLogout 
             <Menu size={32} />
           </button>
           <div className="flex justify-center">
-            <img src={T2Q_LOGO_URL} alt="Talk2Quote App" className="h-20 object-contain" />
+            <img src={T2Q_LOGO_URL} alt="Talk2Quote App" className="h-24 object-contain" />
           </div>
           <button onClick={() => navigateTo('referral')} className="p-2 rounded-full text-purple-600 hover:bg-purple-50">
             <Gift size={32}/>
