@@ -1815,14 +1815,32 @@ const App = () => {
         return;
     }
 
-    try {
-        const generateQuoteFunc = httpsCallable(functions, 'generateQuote');
-        const result = await generateQuoteFunc({
-            transcript: finalText,
-            type: 'quote'
-        });
+    const isLocalEnvironment = window.location.hostname.includes('localhost') ||
+                                window.location.hostname.includes('webcontainer');
 
-        const parsedResult = result.data;
+    try {
+        let parsedResult;
+
+        if (isLocalEnvironment) {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
+            parsedResult = {
+                scopeSummary: 'Paint interior walls of 3-bedroom house. Includes preparation, patching minor holes, and two coats of premium wash and wear paint in "Antique White".',
+                items: [
+                    { id: 1, description: 'Interior Wall Painting (per sqm)', qty: 150, price: 12.50 },
+                    { id: 2, description: 'Prep & Patch Materials', qty: 1, price: 150.00 },
+                    { id: 3, description: 'Premium Paint (10L Tins)', qty: 4, price: 185.00 }
+                ]
+            };
+        } else {
+            const generateQuoteFunc = httpsCallable(functions, 'generateQuote');
+            const result = await generateQuoteFunc({
+                transcript: finalText,
+                type: 'quote'
+            });
+            parsedResult = result.data;
+        }
+
         const safeItems = parsedResult.items || [];
 
         let newDocId = null;
