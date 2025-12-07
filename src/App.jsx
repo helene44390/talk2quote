@@ -328,13 +328,7 @@ const SignUpScreen = ({ handleSignUp, onBack }) => {
         email: '',
         password: '',
         confirmPassword: '',
-        cardNumber: '',
-        cardExpiry: '',
-        cardCVC: '',
-        cardName: '',
-        reminderEmail: false,
-        termsAccepted: false,
-        autoChargeConsent: false
+        termsAccepted: false
     });
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -342,20 +336,6 @@ const SignUpScreen = ({ handleSignUp, onBack }) => {
     const handleChange = (field, value) => {
         setFormData(prev => ({ ...prev, [field]: value }));
         setError('');
-    };
-
-    const formatCardNumber = (value) => {
-        const numbers = value.replace(/\D/g, '');
-        const groups = numbers.match(/.{1,4}/g) || [];
-        return groups.join(' ').substring(0, 19);
-    };
-
-    const formatExpiry = (value) => {
-        const numbers = value.replace(/\D/g, '');
-        if (numbers.length >= 2) {
-            return numbers.substring(0, 2) + (numbers.length > 2 ? '/' + numbers.substring(2, 4) : '');
-        }
-        return numbers;
     };
 
     const onSubmit = async (e) => {
@@ -376,18 +356,8 @@ const SignUpScreen = ({ handleSignUp, onBack }) => {
             return;
         }
 
-        if (!formData.cardNumber || formData.cardNumber.replace(/\s/g, '').length < 13) {
-            setError('Please enter a valid card number.');
-            return;
-        }
-
         if (!formData.termsAccepted) {
             setError('Please accept the terms and conditions.');
-            return;
-        }
-
-        if (!formData.autoChargeConsent) {
-            setError('Please consent to be charged after using all free trial quotes.');
             return;
         }
 
@@ -399,17 +369,10 @@ const SignUpScreen = ({ handleSignUp, onBack }) => {
 
             const user = auth.currentUser;
             if (user) {
-                const cardNumberClean = formData.cardNumber.replace(/\s/g, '');
-                const last4 = cardNumberClean.slice(-4);
-
                 const userProfileRef = doc(db, 'users', user.uid, 'profile', 'details');
                 await setDoc(userProfileRef, {
                     email: formData.email,
-                    card_number_last4: last4,
-                    card_brand: 'Visa',
-                    reminder_email_opt_in: formData.reminderEmail,
                     terms_accepted: formData.termsAccepted,
-                    auto_charge_consent: formData.autoChargeConsent,
                     plan_type: 'trial',
                     status: 'active',
                     quotes_generated: 0,
@@ -475,77 +438,7 @@ const SignUpScreen = ({ handleSignUp, onBack }) => {
                         />
                     </div>
 
-                    <div className="pt-4 border-t border-gray-200">
-                        <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
-                            <CreditCard size={16} className="mr-2"/>
-                            Payment Information
-                        </h3>
-                        <p className="text-xs text-gray-500 mb-4">Your card will be charged $29/month after your 10 free trial quotes are used.</p>
-
-                        <div className="space-y-3">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Card Number</label>
-                                <input
-                                    type="text"
-                                    value={formData.cardNumber}
-                                    onChange={(e) => handleChange('cardNumber', formatCardNumber(e.target.value))}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                                    placeholder="1234 5678 9012 3456"
-                                    maxLength="19"
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Expiry</label>
-                                    <input
-                                        type="text"
-                                        value={formData.cardExpiry}
-                                        onChange={(e) => handleChange('cardExpiry', formatExpiry(e.target.value))}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                                        placeholder="MM/YY"
-                                        maxLength="5"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">CVC</label>
-                                    <input
-                                        type="text"
-                                        value={formData.cardCVC}
-                                        onChange={(e) => handleChange('cardCVC', e.target.value.replace(/\D/g, '').substring(0, 4))}
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                                        placeholder="123"
-                                        maxLength="4"
-                                    />
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Cardholder Name</label>
-                                <input
-                                    type="text"
-                                    value={formData.cardName}
-                                    onChange={(e) => handleChange('cardName', e.target.value)}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                                    placeholder="Name on card"
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="pt-4 space-y-3">
-                        <label className="flex items-start cursor-pointer">
-                            <input
-                                type="checkbox"
-                                checked={formData.reminderEmail}
-                                onChange={(e) => handleChange('reminderEmail', e.target.checked)}
-                                className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                            />
-                            <span className="ml-3 text-sm text-gray-700">
-                                Send me a reminder email when my free trial is ending
-                            </span>
-                        </label>
-
+                    <div className="pt-4">
                         <label className="flex items-start cursor-pointer">
                             <input
                                 type="checkbox"
@@ -555,18 +448,6 @@ const SignUpScreen = ({ handleSignUp, onBack }) => {
                             />
                             <span className="ml-3 text-sm text-gray-700">
                                 I agree to the <span className="text-blue-600 underline">Terms and Conditions</span>
-                            </span>
-                        </label>
-
-                        <label className="flex items-start cursor-pointer">
-                            <input
-                                type="checkbox"
-                                checked={formData.autoChargeConsent}
-                                onChange={(e) => handleChange('autoChargeConsent', e.target.checked)}
-                                className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                            />
-                            <span className="ml-3 text-sm text-gray-700">
-                                I consent to be automatically charged $29/month after using all 10 free trial quotes
                             </span>
                         </label>
                     </div>
@@ -1545,7 +1426,6 @@ const CompanyDetailsScreen = ({ companyDetails, setCompanyDetails, user }) => {
 const SubscriptionScreen = ({ user }) => {
     const [subscription, setSubscription] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [upgrading, setUpgrading] = useState(false);
 
     useEffect(() => {
         if (user) {
@@ -1559,50 +1439,8 @@ const SubscriptionScreen = ({ user }) => {
         }
     }, [user]);
 
-    const handleUpgrade = async () => {
-        setUpgrading(true);
-        try {
-            const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-            const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-            const apiUrl = `${supabaseUrl}/functions/v1/stripe-checkout`;
-
-            const currentUrl = window.location.origin;
-            const successUrl = `${currentUrl}?payment=success`;
-            const cancelUrl = `${currentUrl}?payment=cancelled`;
-
-            const token = await user.getIdToken();
-
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    price_id: 'price_1SaaZeRXexG1Z7OqSpChrYag',
-                    success_url: successUrl,
-                    cancel_url: cancelUrl,
-                    mode: 'subscription'
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to create checkout session');
-            }
-
-            const data = await response.json();
-
-            if (data.url) {
-                window.location.href = data.url;
-            } else {
-                throw new Error('No checkout URL returned');
-            }
-        } catch (error) {
-            console.error('Upgrade error:', error);
-            alert('Failed to start checkout. Please try again.');
-            setUpgrading(false);
-        }
+    const handleUpgrade = () => {
+        alert('Payment gateway integration coming soon.');
     };
 
     if (loading) return <div className="p-4 flex justify-center"><Loader className="animate-spin text-gray-500"/></div>;
@@ -1623,17 +1461,9 @@ const SubscriptionScreen = ({ user }) => {
                 <div className="text-3xl font-bold text-gray-900 mb-1">{planType === 'pro' ? '$29/mo' : 'Free'}</div>
                 <button
                     onClick={planType === 'trial' ? handleUpgrade : undefined}
-                    disabled={upgrading}
-                    className="w-full py-3 bg-blue-600 text-white font-bold rounded-lg mt-4 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                    className="w-full py-3 bg-blue-600 text-white font-bold rounded-lg mt-4 flex items-center justify-center"
                 >
-                    {upgrading ? (
-                        <>
-                            <Loader className="animate-spin mr-2" size={20} />
-                            Loading...
-                        </>
-                    ) : (
-                        planType === 'trial' ? 'Upgrade to Pro' : 'Manage Subscription'
-                    )}
+                    {planType === 'trial' ? 'Upgrade to Pro' : 'Manage Subscription'}
                 </button>
             </div>
         </div>
