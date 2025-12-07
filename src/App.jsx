@@ -1638,7 +1638,7 @@ const MenuDrawer = ({ isMenuOpen, navigateTo, handleLogout }) => (
 
 const Layout = ({ children, isMenuOpen, setIsMenuOpen, navigateTo, handleLogout }) => (
     <div className="flex flex-col h-screen max-w-md mx-auto bg-gray-100 shadow-2xl">
-      <header className="flex items-center justify-between p-4 bg-white border-b border-gray-200 shadow-sm sticky top-0 z-40">
+      <header className="flex items-center justify-between p-2 bg-white border-b border-gray-200 shadow-sm sticky top-0 z-40">
           <button onClick={() => setIsMenuOpen(true)} className="p-2 rounded-full text-blue-600 hover:bg-blue-50" aria-label="Open Menu">
             <Menu size={24} />
           </button>
