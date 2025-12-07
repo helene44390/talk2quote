@@ -278,7 +278,8 @@ const LoginScreen = ({ handleLogin, handleSignUp, handlePasswordReset }) => {
     return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4">
             <div className="w-full max-w-sm p-6 space-y-4 bg-white shadow-xl rounded-xl">
-                <h1 className="handwriting-title text-center text-3xl text-gray-800 mx-auto" style={{ fontFamily: "'Caveat', cursive" }}>Turn Recordings Into Quotes Instantly</h1>
+                <AppHeader />
+                <h1 className="handwriting-title text-center text-3xl text-gray-800 mx-auto -mt-2" style={{ fontFamily: "'Caveat', cursive" }}>Turn Recordings Into Quotes Instantly</h1>
 
                 {error && <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg text-center font-medium border border-red-200">{error}</div>}
 
@@ -1943,6 +1944,10 @@ const App = () => {
 
   if (user && currentPage === 'login') {
       setTimeout(() => setCurrentPage('main'), 0);
+  }
+
+  if (!user || currentPage === 'login') {
+      return content;
   }
 
   return (
