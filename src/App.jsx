@@ -323,6 +323,64 @@ const LoginScreen = ({ handleLogin, handleSignUp, handlePasswordReset }) => {
     );
 };
 
+const TermsModal = ({ isOpen, onClose }) => {
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[80vh] flex flex-col">
+                <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                    <h2 className="text-2xl font-bold text-gray-800">Terms and Conditions</h2>
+                    <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition">
+                        <X size={24} className="text-gray-500"/>
+                    </button>
+                </div>
+                <div className="flex-grow overflow-y-auto p-6 space-y-4 text-sm text-gray-700">
+                    <h3 className="font-bold text-lg text-gray-800">1. Acceptance of Terms</h3>
+                    <p>By accessing and using Talk2Quote ("the Service"), you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to these Terms and Conditions, please do not use the Service.</p>
+
+                    <h3 className="font-bold text-lg text-gray-800">2. Description of Service</h3>
+                    <p>Talk2Quote provides a platform for creating, managing, and sharing professional quotes through voice-to-text technology and automated quote generation. The Service includes both free trial and paid subscription options.</p>
+
+                    <h3 className="font-bold text-lg text-gray-800">3. User Accounts</h3>
+                    <p>You are responsible for maintaining the confidentiality of your account credentials and for all activities that occur under your account. You agree to notify us immediately of any unauthorized use of your account.</p>
+
+                    <h3 className="font-bold text-lg text-gray-800">4. Free Trial and Subscriptions</h3>
+                    <p>New users receive 10 free trial quotes. After the trial period, continued use requires a paid subscription at $29/month. You may cancel your subscription at any time through your account settings.</p>
+
+                    <h3 className="font-bold text-lg text-gray-800">5. Data and Privacy</h3>
+                    <p>We collect and process your personal data in accordance with our Privacy Policy. By using the Service, you consent to such processing and warrant that all data provided by you is accurate.</p>
+
+                    <h3 className="font-bold text-lg text-gray-800">6. User Content</h3>
+                    <p>You retain all rights to the quotes and content you create using the Service. You grant us a license to store, process, and display your content solely for the purpose of providing the Service.</p>
+
+                    <h3 className="font-bold text-lg text-gray-800">7. Prohibited Uses</h3>
+                    <p>You agree not to use the Service for any unlawful purpose or in any way that could damage, disable, or impair the Service. You may not attempt to gain unauthorized access to any part of the Service.</p>
+
+                    <h3 className="font-bold text-lg text-gray-800">8. Limitation of Liability</h3>
+                    <p>The Service is provided "as is" without warranties of any kind. We shall not be liable for any indirect, incidental, special, consequential, or punitive damages resulting from your use of the Service.</p>
+
+                    <h3 className="font-bold text-lg text-gray-800">9. Changes to Terms</h3>
+                    <p>We reserve the right to modify these Terms at any time. Continued use of the Service after changes constitutes acceptance of the modified Terms.</p>
+
+                    <h3 className="font-bold text-lg text-gray-800">10. Contact</h3>
+                    <p>For questions about these Terms, please contact us at legal@talk2quote.app</p>
+
+                    <p className="pt-4 text-xs text-gray-500 italic">Last updated: {new Date().toLocaleDateString()}</p>
+                </div>
+                <div className="p-6 border-t border-gray-200">
+                    <button
+                        onClick={onClose}
+                        className="w-full py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition"
+                    >
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const SignUpScreen = ({ handleSignUp, onBack }) => {
     const [formData, setFormData] = useState({
         email: '',
@@ -332,6 +390,7 @@ const SignUpScreen = ({ handleSignUp, onBack }) => {
     });
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [showTermsModal, setShowTermsModal] = useState(false);
 
     const handleChange = (field, value) => {
         setFormData(prev => ({ ...prev, [field]: value }));
@@ -439,15 +498,21 @@ const SignUpScreen = ({ handleSignUp, onBack }) => {
                     </div>
 
                     <div className="pt-4">
-                        <label className="flex items-start cursor-pointer">
+                        <label className="flex items-start">
                             <input
                                 type="checkbox"
                                 checked={formData.termsAccepted}
                                 onChange={(e) => handleChange('termsAccepted', e.target.checked)}
-                                className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer"
                             />
                             <span className="ml-3 text-sm text-gray-700">
-                                I agree to the <span className="text-blue-600 underline">Terms and Conditions</span>
+                                I agree to the <span
+                                    className="text-blue-600 underline cursor-pointer hover:text-blue-800"
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        setShowTermsModal(true);
+                                    }}
+                                >Terms and Conditions</span>
                             </span>
                         </label>
                     </div>
@@ -461,6 +526,7 @@ const SignUpScreen = ({ handleSignUp, onBack }) => {
                     </button>
                 </form>
             </div>
+            <TermsModal isOpen={showTermsModal} onClose={() => setShowTermsModal(false)} />
         </div>
     );
 };
