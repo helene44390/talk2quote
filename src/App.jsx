@@ -1346,6 +1346,21 @@ const ShareScreen = ({ mockQuote, handleQuoteSent, navigateTo, companyDetails, u
 
         setSendingEmail(true);
         try {
+            const accountingEmails = [];
+            try {
+                const settingsSnapshot = await getDoc(doc(db, 'users', user.uid, 'settings', 'accounting'));
+                if (settingsSnapshot.exists()) {
+                    const settings = settingsSnapshot.data();
+                    ['xero', 'myob', 'quickbooks'].forEach(provider => {
+                        if (settings[provider]?.email) {
+                            accountingEmails.push(settings[provider].email);
+                        }
+                    });
+                }
+            } catch (settingsError) {
+                console.error('Error fetching accounting settings:', settingsError);
+            }
+
             const pdfBase64 = generatePDFBase64(mockQuote, companyDetails);
             const sendQuoteEmail = httpsCallable(functions, 'sendQuoteEmail');
 
@@ -1362,7 +1377,8 @@ const ShareScreen = ({ mockQuote, handleQuoteSent, navigateTo, companyDetails, u
                     items: mockQuote.items
                 },
                 pdfBase64,
-                companyDetails
+                companyDetails,
+                bccEmail: accountingEmails.length > 0 ? accountingEmails : undefined
             });
 
             alert('Quote sent successfully via email!');

@@ -113,7 +113,7 @@ exports.sendQuoteEmail = functions.https.onCall(async (data, context) => {
       throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
     }
 
-    const { recipientEmail, recipientName, quoteData, pdfBase64, companyDetails } = data;
+    const { recipientEmail, recipientName, quoteData, pdfBase64, companyDetails, bccEmail } = data;
 
     if (!recipientEmail || !quoteData) {
       throw new functions.https.HttpsError('invalid-argument', 'recipientEmail and quoteData are required');
@@ -225,6 +225,10 @@ exports.sendQuoteEmail = functions.https.onCall(async (data, context) => {
       html: emailHtml,
       attachments: []
     };
+
+    if (bccEmail && Array.isArray(bccEmail) && bccEmail.length > 0) {
+      mailOptions.bcc = bccEmail.join(', ');
+    }
 
     if (pdfBase64) {
       mailOptions.attachments.push({
