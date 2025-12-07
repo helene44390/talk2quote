@@ -43,9 +43,10 @@
 
 .handwriting-title {
   font-family: 'Caveat', cursive !important;
-  font-weight: 700;
+  font-weight: 700 !important;
   animation: fadeInWrite 2s ease-out forwards;
   opacity: 0;
+  letter-spacing: 0.02em;
 }
 
 @keyframes fadeInWrite {

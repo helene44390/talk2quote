@@ -276,14 +276,13 @@ const LoginScreen = ({ handleLogin, handleSignUp, handlePasswordReset }) => {
     }
 
     return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-6">
-            <div className="w-full max-w-sm p-8 space-y-6 bg-white shadow-xl rounded-xl">
-                <AppHeader />
-                <h1 className="handwriting-title text-center text-3xl text-gray-800 mt-4 mx-auto">Turn Recordings into Quotes instantly</h1>
+        <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4">
+            <div className="w-full max-w-sm p-6 space-y-4 bg-white shadow-xl rounded-xl">
+                <h1 className="handwriting-title text-center text-3xl text-gray-800 mx-auto" style={{ fontFamily: "'Caveat', cursive" }}>Turn Recordings Into Quotes Instantly</h1>
 
                 {error && <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg text-center font-medium border border-red-200">{error}</div>}
 
-                <div className="space-y-4 mt-6">
+                <div className="space-y-3 pt-2">
                     <InputField
                         type="email"
                         placeholder="Email Address"
@@ -298,8 +297,8 @@ const LoginScreen = ({ handleLogin, handleSignUp, handlePasswordReset }) => {
                     />
                 </div>
 
-                <div className="space-y-3 pt-2">
-                    <button onClick={onLogin} disabled={loading} className="w-full py-3 text-lg font-semibold text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 shadow-md flex justify-center items-center">
+                <div className="space-y-3 pt-1">
+                    <button onClick={onLogin} disabled={loading} className="w-full py-3 text-lg font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-md flex justify-center items-center">
                         {loading ? <Loader className="animate-spin" size={24}/> : "Sign In"}
                     </button>
 
@@ -309,7 +308,7 @@ const LoginScreen = ({ handleLogin, handleSignUp, handlePasswordReset }) => {
                         </button>
                     </div>
 
-                    <div className="relative flex py-2 items-center">
+                    <div className="relative flex py-1 items-center">
                         <div className="flex-grow border-t border-gray-300"></div>
                         <span className="flex-shrink-0 mx-4 text-gray-400 text-xs">New User?</span>
                         <div className="flex-grow border-t border-gray-300"></div>
