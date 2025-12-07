@@ -1,9 +1,8 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
-const cors = require("cors")({ origin: true });
 const fetch = require("node-fetch");
 const nodemailer = require("nodemailer");
-
+const cors = require("cors")({origin: true});
 admin.initializeApp();
 
 exports.generateQuote = functions.https.onCall(async (data, context) => {
@@ -14,19 +13,18 @@ exports.generateQuote = functions.https.onCall(async (data, context) => {
       throw new functions.https.HttpsError('invalid-argument', 'transcript is required');
     }
 
-    const apiKey = process.env.GEMINI_API_KEY || functions.config().gemini?.api_key;
-
+    // 1. Get the API Key from the config (Gen 1 style)
+    const apiKey = functions.config().gemini.api_key;
     if (!apiKey) {
-      throw new functions.https.HttpsError('failed-precondition', 'API Key not configured');
+      console.error("CRITICAL ERROR: functions.config().gemini.api_key is missing.");
+      throw new functions.https.HttpsError('failed-precondition', 'API Key not configured.');
     }
 
     let prompt = '';
-
     if (type === 'rewrite') {
       prompt = `You are a professional business writer. Rewrite the following quote scope summary to be more professional, clear, and well-structured. Keep all important details but improve the language and formatting.
 
-Scope Summary to Rewrite:
-${transcript}
+Scope Summary to Rewrite: ${transcript}
 
 Return ONLY the rewritten text, nothing else.`;
     } else {
@@ -34,15 +32,19 @@ Return ONLY the rewritten text, nothing else.`;
 
 Extract the following information from the transcript and return it as valid JSON:
 
-1. scopeSummary: A professional summary of the work to be done
-2. items: An array of line items, each with:
-   - id: sequential number starting from 1
-   - description: what the item is
-   - qty: quantity (number)
-   - price: unit price (number)
+scopeSummary: A professional summary of the work to be done
 
-Transcript:
-${transcript}
+items: An array of line items, each with:
+
+id: sequential number starting from 1
+
+description: what the item is
+
+qty: quantity (number)
+
+price: unit price (number)
+
+Transcript: ${transcript}
 
 Return ONLY valid JSON in this exact format (no markdown, no code blocks):
 {
@@ -66,6 +68,8 @@ Return ONLY valid JSON in this exact format (no markdown, no code blocks):
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Gemini API Error:", response.status, errorText);
       throw new functions.https.HttpsError('internal', `Gemini API error: ${response.statusText}`);
     }
 
@@ -119,22 +123,26 @@ exports.sendQuoteEmail = functions.https.onCall(async (data, context) => {
       throw new functions.https.HttpsError('invalid-argument', 'recipientEmail and quoteData are required');
     }
 
-    const emailConfig = functions.config().email;
-    if (!emailConfig || !emailConfig.user || !emailConfig.password) {
+    // Get Email Credentials from Config (Gen 1 style)
+    const emailUser = functions.config().email ? functions.config().email.user : null;
+    const emailPass = functions.config().email ? functions.config().email.password : null;
+
+    if (!emailUser || !emailPass) {
+      console.error("Email configuration missing.");
       throw new functions.https.HttpsError('failed-precondition', 'Email configuration not set');
     }
 
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
-        user: emailConfig.user,
-        pass: emailConfig.password
+        user: emailUser,
+        pass: emailPass
       }
     });
 
     const total = quoteData.items.reduce((sum, item) => sum + (item.qty * item.price), 0);
     const companyName = companyDetails?.name || 'Talk2Quote';
-    const approvalLink = `${functions.config().app?.url || 'https://talk2quote-app.web.app'}/approve/${quoteData.id}`;
+    const approvalLink = `https://talk2quote-app.web.app`;
 
     const emailHtml = `
 <!DOCTYPE html>
@@ -219,15 +227,19 @@ exports.sendQuoteEmail = functions.https.onCall(async (data, context) => {
     `;
 
     const mailOptions = {
-      from: `${companyName} <${emailConfig.user}>`,
+      from: `${companyName} <${emailUser}>`,
       to: recipientEmail,
       subject: `Quote #${quoteData.id} from ${companyName}`,
       html: emailHtml,
       attachments: []
     };
 
-    if (bccEmail && Array.isArray(bccEmail) && bccEmail.length > 0) {
-      mailOptions.bcc = bccEmail.join(', ');
+    if (bccEmail) {
+      if (Array.isArray(bccEmail)) {
+        mailOptions.bcc = bccEmail.join(', ');
+      } else {
+        mailOptions.bcc = bccEmail;
+      }
     }
 
     if (pdfBase64) {
