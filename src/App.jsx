@@ -1156,111 +1156,175 @@ const SettingsScreen = ({ navigateTo, user }) => {
 };
 
 const AccountingScreen = ({ user }) => {
-    const [integrations, setIntegrations] = useState([]);
+    const [accountingSettings, setAccountingSettings] = useState({});
     const [loading, setLoading] = useState(true);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedProvider, setSelectedProvider] = useState(null);
+    const [emailInput, setEmailInput] = useState('');
+    const [saving, setSaving] = useState(false);
 
     useEffect(() => {
         if (user) {
-            fetchIntegrations();
+            fetchAccountingSettings();
         }
     }, [user]);
 
-    const fetchIntegrations = async () => {
+    const fetchAccountingSettings = async () => {
         try {
-            const integrationsSnapshot = await getDoc(doc(db, 'users', user.uid, 'integrations', 'active'));
-            if(integrationsSnapshot.exists()){
-                setIntegrations(integrationsSnapshot.data());
+            const settingsSnapshot = await getDoc(doc(db, 'users', user.uid, 'settings', 'accounting'));
+            if(settingsSnapshot.exists()){
+                setAccountingSettings(settingsSnapshot.data());
             }
         } catch (error) {
-            console.error('Error fetching integrations:', error);
+            console.error('Error fetching accounting settings:', error);
         } finally {
             setLoading(false);
         }
     };
 
-    const handleConnect = async (providerId) => {
-        const provider = providerId.toLowerCase();
+    const openModal = (provider) => {
+        setSelectedProvider(provider);
+        setEmailInput(accountingSettings[provider.id]?.email || '');
+        setIsModalOpen(true);
+    };
+
+    const closeModal = () => {
+        setIsModalOpen(false);
+        setSelectedProvider(null);
+        setEmailInput('');
+    };
+
+    const handleSaveLink = async () => {
+        if (!emailInput.trim()) {
+            alert('Please enter an email address');
+            return;
+        }
+
+        setSaving(true);
         try {
-            const integrationRef = doc(db, 'users', user.uid, 'integrations', 'active');
-            await setDoc(integrationRef, {
-                [provider]: {
-                    connected: true,
-                    connectedAt: new Date().toISOString(),
-                    organization: 'Demo Org'
+            const settingsRef = doc(db, 'users', user.uid, 'settings', 'accounting');
+            await setDoc(settingsRef, {
+                [selectedProvider.id]: {
+                    email: emailInput.trim(),
+                    linkedAt: new Date().toISOString()
                 }
             }, { merge: true });
 
-            await fetchIntegrations();
-            console.log('Integration pending implementation');
+            await fetchAccountingSettings();
+            closeModal();
         } catch (error) {
-            console.error('Error connecting:', error);
-            alert('Failed to connect.');
+            console.error('Error saving link:', error);
+            alert('Failed to save link. Please try again.');
+        } finally {
+            setSaving(false);
         }
     };
 
-    const handleDisconnect = async (providerId) => {
-        const provider = providerId.toLowerCase();
-        if (!confirm(`Disconnect ${providerId}?`)) return;
-
-        try {
-            const integrationRef = doc(db, 'users', user.uid, 'integrations', 'active');
-            const newIntegrations = {...integrations};
-            delete newIntegrations[provider];
-
-            await setDoc(integrationRef, newIntegrations);
-
-            setIntegrations(newIntegrations);
-            alert(`Disconnected ${providerId}`);
-        } catch (error) {
-            console.error('Error disconnecting:', error);
-        }
+    const getHelpText = (providerId) => {
+        const helpTexts = {
+            xero: 'Open Xero > Click "Business" menu > Select "Bills to pay" > Look for the "Email to bills" link at the top.',
+            myob: 'Open MYOB > Click "Purchases" > Click "In Tray" > Copy the email address shown there.',
+            quickbooks: 'Open QuickBooks > Go to "Bookkeeping" > "Transactions" > "Receipts" > Copy the forwarding email.'
+        };
+        return helpTexts[providerId] || '';
     };
 
     if (loading) return <div className="p-4 bg-gray-50 flex justify-center"><Loader className="animate-spin text-gray-500"/></div>;
 
     const providers = [
-        { id: 'xero', name: 'Xero', logo: '/Xero logo copy copy.png', description: 'Direct API connection' },
-        { id: 'quickbooks', name: 'QuickBooks', logo: '/Quickbooks logo copy copy.png', description: 'Direct API connection' },
-        { id: 'myob', name: 'MYOB', logo: '/MYOB logo.jpg', description: 'Direct API connection' },
+        { id: 'xero', name: 'Xero', logo: '/Xero logo copy copy.png' },
+        { id: 'quickbooks', name: 'QuickBooks', logo: '/Quickbooks logo copy copy.png' },
+        { id: 'myob', name: 'MYOB', logo: '/MYOB logo.jpg' },
     ];
 
     return (
-        <div className="p-4 bg-gray-50 h-full overflow-y-auto">
-            <h2 className="text-2xl font-bold text-gray-800 mb-4">Accounting Integration</h2>
-            <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
-                <p className="text-sm text-blue-700">Connect to sync quotes automatically.</p>
-            </div>
+        <>
+            <div className="p-4 bg-gray-50 h-full overflow-y-auto">
+                <h2 className="text-2xl font-bold text-gray-800 mb-4">Accounting Integration</h2>
+                <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
+                    <p className="text-sm text-blue-700">Link your accounting software to send quotes directly via email.</p>
+                </div>
 
-            <div className="space-y-3">
-                {providers.map(provider => {
-                    const isConnected = integrations[provider.id]?.connected;
-                    return (
-                        <div key={provider.id} className="bg-white rounded-xl shadow-md overflow-hidden">
-                            <div className={`p-4 ${isConnected ? 'bg-blue-50 border-b border-blue-100' : ''}`}>
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center">
-                                        <div className="w-12 h-12 flex items-center justify-center rounded-lg mr-4 bg-white border border-gray-200 p-2">
-                                            <img src={provider.logo} alt={provider.name} className="w-full h-full object-contain" />
+                <div className="space-y-3">
+                    {providers.map(provider => {
+                        const linkedEmail = accountingSettings[provider.id]?.email;
+                        return (
+                            <div key={provider.id} className="bg-white rounded-xl shadow-md overflow-hidden">
+                                <div className="p-4">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center flex-1">
+                                            <div className="w-12 h-12 flex items-center justify-center rounded-lg mr-4 bg-white border border-gray-200 p-2">
+                                                <img src={provider.logo} alt={provider.name} className="w-full h-full object-contain" />
+                                            </div>
+                                            <div className="flex-1">
+                                                <div className="font-semibold text-gray-800">{provider.name}</div>
+                                                {linkedEmail ? (
+                                                    <div className="mt-1 inline-flex items-center px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+                                                        <Check size={12} className="mr-1" />
+                                                        Linked to {linkedEmail}
+                                                    </div>
+                                                ) : (
+                                                    <div className="text-xs text-gray-500 mt-1">Not linked</div>
+                                                )}
+                                            </div>
                                         </div>
-                                        <div>
-                                            <div className="font-semibold text-gray-800">{provider.name}</div>
-                                            <div className="text-xs text-gray-500">{provider.description}</div>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        {isConnected ? (
-                                            <button onClick={() => handleDisconnect(provider.name)} className="text-xs px-3 py-1 bg-red-50 text-red-600 rounded-lg hover:bg-red-100">Disconnect</button>
-                                        ) : (
-                                            <button onClick={() => handleConnect(provider.name)} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold">Connect</button>
-                                        )}
+                                        <button
+                                            onClick={() => openModal(provider)}
+                                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold text-sm whitespace-nowrap ml-2"
+                                        >
+                                            {linkedEmail ? 'Update' : 'Link via Email'}
+                                        </button>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    );
-                })}
+                        );
+                    })}
+                </div>
             </div>
-        </div>
+
+            {isModalOpen && selectedProvider && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+                        <div className="p-6">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-xl font-bold text-gray-800">Link {selectedProvider.name}</h3>
+                                <button onClick={closeModal} className="p-1 hover:bg-gray-100 rounded-full">
+                                    <X size={20} className="text-gray-500" />
+                                </button>
+                            </div>
+
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Paste your unique {selectedProvider.name} Email Address
+                                </label>
+                                <input
+                                    type="email"
+                                    value={emailInput}
+                                    onChange={(e) => setEmailInput(e.target.value)}
+                                    placeholder={`e.g. yourname@${selectedProvider.id}.com`}
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                />
+                            </div>
+
+                            <div className="bg-gray-100 border border-gray-300 rounded-lg p-4 mb-6">
+                                <h4 className="text-sm font-semibold text-gray-700 mb-2">Where do I find this?</h4>
+                                <p className="text-sm text-gray-600 leading-relaxed">
+                                    {getHelpText(selectedProvider.id)}
+                                </p>
+                            </div>
+
+                            <button
+                                onClick={handleSaveLink}
+                                disabled={saving}
+                                className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold flex items-center justify-center"
+                            >
+                                {saving ? <Loader className="animate-spin" size={20} /> : 'Save Link'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </>
     );
 };
 
