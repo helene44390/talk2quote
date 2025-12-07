@@ -42,27 +42,22 @@
 }
 
 .handwriting-title {
-  font-family: 'Caveat', cursive;
+  font-family: 'Caveat', cursive !important;
   font-weight: 700;
-  overflow: hidden;
-  white-space: nowrap;
-  animation: typewriter 3s steps(40) 0.5s forwards, fadeIn 0.5s ease-in;
+  animation: fadeInWrite 2s ease-out forwards;
   opacity: 0;
 }
 
-@keyframes typewriter {
+@keyframes fadeInWrite {
   0% {
-    width: 0;
-    opacity: 1;
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  50% {
+    opacity: 0.5;
   }
   100% {
-    width: 100%;
     opacity: 1;
-  }
-}
-
-@keyframes fadeIn {
-  to {
-    opacity: 1;
+    transform: translateY(0);
   }
 }

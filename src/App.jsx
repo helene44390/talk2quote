@@ -279,7 +279,7 @@ const LoginScreen = ({ handleLogin, handleSignUp, handlePasswordReset }) => {
         <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-6">
             <div className="w-full max-w-sm p-8 space-y-6 bg-white shadow-xl rounded-xl">
                 <AppHeader />
-                <h1 className="handwriting-title text-center text-3xl text-gray-800 mt-4 mx-auto" style={{ maxWidth: 'fit-content' }}>Turn Recordings into Quotes instantly</h1>
+                <h1 className="handwriting-title text-center text-3xl text-gray-800 mt-4 mx-auto">Turn Recordings into Quotes instantly</h1>
 
                 {error && <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg text-center font-medium border border-red-200">{error}</div>}
 
