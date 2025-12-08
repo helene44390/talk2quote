@@ -16,7 +16,7 @@ console.log(`🔑 Key Path: ${keyPath}`);
 // 2. Verify the file exists
 if (!fs.existsSync(keyPath)) {
   console.error(`❌ CRITICAL ERROR: '${keyFileName}' is missing from the root folder.`);
-  console.error(`   Action Required: Drag and drop your json key file here and rename it to '${keyFileName}'.`);
+  console.error(`   Action Required: Go to your Firebase project settings, generate a new private key, and place it in the root of this project as '${keyFileName}'.`);
   process.exit(1);
 }
 

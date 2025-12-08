@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "deploy:functions": "cd functions && npm install && cd .. && firebase deploy --only functions",
     "setup:functions": "cd functions && npm install",
-    "deploy:backend": "export GOOGLE_APPLICATION_CREDENTIALS=\"$(pwd)/firebase-key.json\" && npx firebase-tools deploy --only functions --force --debug",
+    "deploy:backend": "node check-key.js && GOOGLE_APPLICATION_CREDENTIALS=\"$(pwd)/firebase-key.json\" npx firebase-tools deploy --only functions --force --debug",
     "deploy-fix": "node deploy.js"
   },
   "dependencies": {
@@ -24,6 +24,7 @@
     "@types/react-dom": "^18.2.17",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.19",
+    "dotenv": "^16.3.1",
     "firebase-tools": "^14.27.0",
     "postcss": "^8.4.38",
     "tailwindcss": "^3.4.3",
