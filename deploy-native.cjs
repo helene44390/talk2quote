@@ -22,7 +22,7 @@ if (!API_KEY) {
 console.log('⚙️ Setting API Key config...');
 
 try {
-  execSync(`npx firebase-tools functions:config:set gemini.api_key="${API_KEY}"`, {
+  execSync(`npx firebase functions:config:set gemini.api_key="${API_KEY}"`, {
     stdio: 'inherit',
     env: {
       ...process.env,
@@ -37,7 +37,7 @@ try {
 // 3. Deploy using CLI
 console.log('🚀 Deploying Functions...');
 try {
-  execSync('npx firebase-tools deploy --only functions --force', {
+  execSync('npx firebase deploy --only functions --force', {
     stdio: 'inherit',
     env: {
       ...process.env,
