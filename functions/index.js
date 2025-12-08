@@ -5,8 +5,8 @@ const nodemailer = require("nodemailer");
 const cors = require("cors")({origin: true});
 admin.initializeApp();
 
-// Explicitly set region to australia-southeast1 (Sydney)
-exports.generateQuote = functions.region('australia-southeast1').https.onCall(async (data, context) => {
+// Explicitly set region to asia-southeast1 (Singapore)
+exports.generateQuote = functions.region('asia-southeast1').https.onCall(async (data, context) => {
   try {
     const { transcript, type } = data;
 
@@ -56,7 +56,7 @@ exports.generateQuote = functions.region('australia-southeast1').https.onCall(as
   }
 });
 
-exports.sendQuoteEmail = functions.region('australia-southeast1').https.onCall(async (data, context) => {
+exports.sendQuoteEmail = functions.region('asia-southeast1').https.onCall(async (data, context) => {
   try {
     if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
 
