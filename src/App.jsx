@@ -531,7 +531,7 @@ const SignUpScreen = ({ handleSignUp, onBack }) => {
     );
 };
 
-const MainScreen = ({ mockQuote, setMockQuote, isClientInfoSet, handleRecordToggle, isRecording, isProcessing, transcript }) => (
+const MainScreen = ({ mockQuote, setMockQuote, isClientInfoSet, handleRecordToggle, isRecording, isProcessing, transcript, setTranscript }) => (
     <div className="flex flex-col h-full p-3 bg-gray-50">
       <div className="text-center mb-3">
         <h2 className="text-2xl font-bold text-gray-800 mb-1">Create a Quote</h2>
@@ -583,9 +583,12 @@ const MainScreen = ({ mockQuote, setMockQuote, isClientInfoSet, handleRecordTogg
           {isRecording && <div className="absolute inset-0 border-4 border-red-300 rounded-full animate-ping opacity-75"></div>}
         </div>
         {isRecording && (
-            <div className="mt-4 p-2 bg-gray-100 rounded text-xs text-gray-600 w-full max-w-xs text-center min-h-[20px]">
-                {transcript || "Listening..."}
-            </div>
+            <textarea
+                className="mt-4 p-3 bg-white border-2 border-blue-200 rounded-lg text-sm text-gray-700 w-full max-w-xs min-h-[80px] resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={transcript || ''}
+                onChange={(e) => setTranscript(e.target.value)}
+                placeholder="Listening..."
+            />
         )}
       </div>
       <p className="text-center text-sm font-semibold text-gray-700 mb-2">
@@ -1667,6 +1670,7 @@ const App = () => {
   const [transcript, setTranscript] = useState('');
   const recognitionRef = useRef(null);
   const finalTranscriptRef = useRef('');
+  const isRecordingRef = useRef(false);
 
   const [lastQuoteAccepted, setLastQuoteAccepted] = useState(false);
 
@@ -1787,12 +1791,15 @@ const App = () => {
             console.error("Speech Error:", event.error);
             if (event.error !== 'no-speech' && event.error !== 'aborted') {
                 setIsRecording(false);
+                isRecordingRef.current = false;
             }
         };
 
         recognitionRef.current.onend = () => {
-            if (isRecording) {
+            console.log("Recognition ended. isRecordingRef.current:", isRecordingRef.current);
+            if (isRecordingRef.current === true) {
                 try {
+                    console.log("Restarting recognition...");
                     recognitionRef.current?.start();
                 } catch (err) {
                     console.error("Recognition restart error:", err);
@@ -1800,7 +1807,7 @@ const App = () => {
             }
         };
     }
-  }, [isRecording]);
+  }, []);
 
   const handleLogin = async (email, password) => {
       await signInWithEmailAndPassword(auth, email, password);
@@ -1915,11 +1922,26 @@ const App = () => {
       setTranscript('');
       finalTranscriptRef.current = '';
       setIsRecording(true);
-      try { recognitionRef.current?.start(); } catch (err) { setIsRecording(false); }
+      isRecordingRef.current = true;
+      try {
+        recognitionRef.current?.start();
+      } catch (err) {
+        console.error("Failed to start recognition:", err);
+        setIsRecording(false);
+        isRecordingRef.current = false;
+      }
     } else {
       setIsRecording(false);
+      isRecordingRef.current = false;
       try { recognitionRef.current?.stop(); } catch (err) { console.error(err); }
-      setTimeout(() => { generateQuoteFromAI(transcript); }, 500);
+
+      const finalText = transcript.trim();
+      if (finalText.length < 5) {
+        alert('Please record more details');
+        return;
+      }
+
+      setTimeout(() => { generateQuoteFromAI(finalText); }, 500);
     }
   };
 
@@ -1993,6 +2015,7 @@ const App = () => {
             isRecording={isRecording}
             isProcessing={isProcessing}
             transcript={transcript}
+            setTranscript={setTranscript}
         />;
         break;
       case 'review':
@@ -2063,6 +2086,7 @@ const App = () => {
             isRecording={isRecording}
             isProcessing={isProcessing}
             transcript={transcript}
+            setTranscript={setTranscript}
         />;
     }
   }
