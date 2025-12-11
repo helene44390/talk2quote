@@ -1666,6 +1666,7 @@ const App = () => {
 
   const [transcript, setTranscript] = useState('');
   const recognitionRef = useRef(null);
+  const finalTranscriptRef = useRef('');
 
   const [lastQuoteAccepted, setLastQuoteAccepted] = useState(false);
 
@@ -1762,11 +1763,24 @@ const App = () => {
         recognitionRef.current.interimResults = true;
 
         recognitionRef.current.onresult = (event) => {
-            let currentTranscript = '';
+            let interimTranscript = '';
+            let finalTranscript = '';
+
             for (let i = event.resultIndex; i < event.results.length; ++i) {
-                currentTranscript += event.results[i][0].transcript;
+                const transcriptPiece = event.results[i][0].transcript;
+                if (event.results[i].isFinal) {
+                    finalTranscript += transcriptPiece;
+                } else {
+                    interimTranscript += transcriptPiece;
+                }
             }
-            setTranscript(currentTranscript);
+
+            if (finalTranscript) {
+                finalTranscriptRef.current += finalTranscript + ' ';
+            }
+
+            const displayTranscript = finalTranscriptRef.current + interimTranscript;
+            setTranscript(displayTranscript);
         };
 
         recognitionRef.current.onerror = (event) => {
@@ -1822,7 +1836,7 @@ const App = () => {
     setIsProcessing(true);
 
     if (!finalText || finalText.trim().length < 5) {
-        alert("I didn't hear enough detail. Please try recording again.");
+        alert("Please record more details");
         setIsProcessing(false);
         return;
     }
@@ -1899,6 +1913,7 @@ const App = () => {
 
     if (!isRecording) {
       setTranscript('');
+      finalTranscriptRef.current = '';
       setIsRecording(true);
       try { recognitionRef.current?.start(); } catch (err) { setIsRecording(false); }
     } else {
