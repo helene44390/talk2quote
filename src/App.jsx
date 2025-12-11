@@ -531,7 +531,7 @@ const SignUpScreen = ({ handleSignUp, onBack }) => {
     );
 };
 
-const MainScreen = ({ mockQuote, setMockQuote, isClientInfoSet, handleRecordToggle, isRecording, isProcessing, transcript, handleTranscriptChange }) => (
+const MainScreen = ({ mockQuote, setMockQuote, isClientInfoSet, handleRecordToggle, isRecording, isProcessing, recordingDuration }) => (
     <div className="flex flex-col h-full p-3 bg-gray-50">
       <div className="text-center mb-3">
         <h2 className="text-2xl font-bold text-gray-800 mb-1">Create a Quote</h2>
@@ -583,16 +583,14 @@ const MainScreen = ({ mockQuote, setMockQuote, isClientInfoSet, handleRecordTogg
           {isRecording && <div className="absolute inset-0 border-4 border-red-300 rounded-full animate-ping opacity-75"></div>}
         </div>
         {isRecording && (
-            <textarea
-                className="mt-4 p-3 bg-white border-2 border-blue-200 rounded-lg text-sm text-gray-700 w-full max-w-xs min-h-[80px] resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value={transcript || ''}
-                onChange={(e) => handleTranscriptChange(e.target.value)}
-                placeholder="Listening..."
-            />
+            <div className="mt-4 p-4 bg-red-50 border-2 border-red-300 rounded-lg text-center w-full max-w-xs">
+                <p className="text-lg font-bold text-red-700">Recording...</p>
+                <p className="text-sm text-red-600 mt-1">{Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}</p>
+            </div>
         )}
       </div>
       <p className="text-center text-sm font-semibold text-gray-700 mb-2">
-        {isProcessing ? 'AI IS THINKING...' : (isRecording ? 'LISTENING... (Tap to Stop)' : (isClientInfoSet ? 'Tap to Start Recording' : 'Enter email above to start'))}
+        {isProcessing ? 'AI IS THINKING...' : (isRecording ? 'RECORDING AUDIO... (Tap to Stop)' : (isClientInfoSet ? 'Tap to Start Recording' : 'Enter email above to start'))}
       </p>
     </div>
 );
@@ -1667,10 +1665,11 @@ const App = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [loadingQuotes, setLoadingQuotes] = useState(false);
 
-  const [transcript, setTranscript] = useState('');
-  const recognitionRef = useRef(null);
-  const finalTranscriptRef = useRef('');
-  const isRecordingRef = useRef(false);
+  const [audioBlob, setAudioBlob] = useState(null);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const recordingTimerRef = useRef(null);
 
   const [lastQuoteAccepted, setLastQuoteAccepted] = useState(false);
 
@@ -1759,62 +1758,17 @@ const App = () => {
 
   const isClientInfoSet = mockQuote.clientEmail && mockQuote.clientEmail.trim() !== '';
 
-  useEffect(() => {
-    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        recognitionRef.current = new SpeechRecognition();
-        recognitionRef.current.continuous = true;
-        recognitionRef.current.interimResults = true;
-
-        recognitionRef.current.onresult = (event) => {
-            let interimTranscript = '';
-            let finalTranscript = '';
-
-            for (let i = event.resultIndex; i < event.results.length; ++i) {
-                const transcriptPiece = event.results[i][0].transcript;
-                if (event.results[i].isFinal) {
-                    finalTranscript += transcriptPiece;
-                } else {
-                    interimTranscript += transcriptPiece;
-                }
-            }
-
-            if (finalTranscript) {
-                console.log("[Smart Append] Adding final text:", finalTranscript);
-                finalTranscriptRef.current += finalTranscript + ' ';
-            }
-
-            const displayTranscript = finalTranscriptRef.current + interimTranscript;
-            setTranscript(displayTranscript);
-        };
-
-        recognitionRef.current.onerror = (event) => {
-            console.error("Speech Recognition Error:", event.error);
-            if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-                alert('Microphone permission denied. Please enable microphone access in your browser settings.');
-                setIsRecording(false);
-                isRecordingRef.current = false;
-            }
-        };
-
-        recognitionRef.current.onend = () => {
-            console.log("[Continuous Mic] Recognition ended. isRecordingRef.current:", isRecordingRef.current);
-            if (isRecordingRef.current === true) {
-                console.log("[Continuous Mic] Auto-restarting to bridge silence gap...");
-                try {
-                    recognitionRef.current?.start();
-                } catch (err) {
-                    console.error("[Continuous Mic] Restart failed:", err);
-                    if (err.message && err.message.includes('already started')) {
-                        console.log("[Continuous Mic] Recognition already running, continuing...");
-                    }
-                }
-            } else {
-                console.log("[Continuous Mic] Recording stopped by user.");
-            }
-        };
-    }
-  }, []);
+  const blobToBase64 = (blob) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result.split(',')[1];
+        resolve(base64String);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  };
 
   const handleLogin = async (email, password) => {
       await signInWithEmailAndPassword(auth, email, password);
@@ -1846,11 +1800,11 @@ const App = () => {
       navigateTo('review');
   };
 
-  const generateQuoteFromAI = async (finalText) => {
+  const generateQuoteFromAI = async (audioBase64) => {
     setIsProcessing(true);
 
-    if (!finalText || finalText.trim().length < 10) {
-        alert("Recording too short");
+    if (!audioBase64) {
+        alert("No audio recording found");
         setIsProcessing(false);
         return;
     }
@@ -1875,7 +1829,7 @@ const App = () => {
         } else {
             const generateQuoteFunc = httpsCallable(functions, 'generateQuote');
             const result = await generateQuoteFunc({
-                transcript: finalText,
+                audioBase64: audioBase64,
                 type: 'quote'
             });
             parsedResult = result.data;
@@ -1911,7 +1865,8 @@ const App = () => {
         }));
 
         setIsProcessing(false);
-        setTranscript('');
+        setAudioBlob(null);
+        setRecordingDuration(0);
         navigateTo('review');
 
     } catch (error) {
@@ -1921,45 +1876,78 @@ const App = () => {
     }
   };
 
-  const handleTranscriptChange = (newText) => {
-    setTranscript(newText);
-    finalTranscriptRef.current = newText;
-    console.log("[Manual Edit] User edited transcript to:", newText);
-  };
-
-  const handleRecordToggle = (e) => {
+  const handleRecordToggle = async (e) => {
     if (e) e.preventDefault();
     if (!isRecording && !isClientInfoSet) return;
 
     if (!isRecording) {
-      console.log("[Start Recording] Initializing continuous sticky microphone...");
-      setTranscript('');
-      finalTranscriptRef.current = '';
-      setIsRecording(true);
-      isRecordingRef.current = true;
+      console.log("[Audio Recording] Starting audio capture...");
+
       try {
-        recognitionRef.current?.start();
-        console.log("[Start Recording] Speech recognition started successfully.");
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+        const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4';
+        const mediaRecorder = new MediaRecorder(stream, { mimeType });
+        mediaRecorderRef.current = mediaRecorder;
+        audioChunksRef.current = [];
+
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            audioChunksRef.current.push(event.data);
+            console.log("[Audio Recording] Chunk received:", event.data.size, "bytes");
+          }
+        };
+
+        mediaRecorder.onstop = async () => {
+          console.log("[Audio Recording] Recording stopped. Total chunks:", audioChunksRef.current.length);
+
+          const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+          console.log("[Audio Recording] Blob created. Size:", audioBlob.size, "bytes");
+
+          if (audioBlob.size < 1000) {
+            alert('Recording too short. Please record for at least 2 seconds.');
+            setIsRecording(false);
+            setRecordingDuration(0);
+            return;
+          }
+
+          setAudioBlob(audioBlob);
+
+          console.log("[Processing] Converting audio to Base64...");
+          const audioBase64 = await blobToBase64(audioBlob);
+          console.log("[Processing] Base64 conversion complete. Length:", audioBase64.length);
+
+          setTimeout(() => { generateQuoteFromAI(audioBase64); }, 500);
+
+          stream.getTracks().forEach(track => track.stop());
+        };
+
+        mediaRecorder.start(1000);
+        setIsRecording(true);
+        setRecordingDuration(0);
+
+        recordingTimerRef.current = setInterval(() => {
+          setRecordingDuration(prev => prev + 1);
+        }, 1000);
+
+        console.log("[Audio Recording] MediaRecorder started successfully.");
       } catch (err) {
-        console.error("[Start Recording] Failed to start recognition:", err);
+        console.error("[Audio Recording] Failed to start:", err);
+        alert('Failed to access microphone. Please allow microphone permissions.');
         setIsRecording(false);
-        isRecordingRef.current = false;
       }
     } else {
-      console.log("[Stop Recording] User stopped recording. Final transcript length:", transcript.trim().length);
+      console.log("[Audio Recording] Stopping recording...");
       setIsRecording(false);
-      isRecordingRef.current = false;
-      try { recognitionRef.current?.stop(); } catch (err) { console.error(err); }
 
-      const finalText = transcript.trim();
-      if (!finalText || finalText.length < 10) {
-        alert('Recording too short');
-        console.log("[Validation Failed] Transcript too short. Need at least 10 characters.");
-        return;
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+        recordingTimerRef.current = null;
       }
 
-      console.log("[Processing] Sending transcript to AI:", finalText);
-      setTimeout(() => { generateQuoteFromAI(finalText); }, 500);
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+      }
     }
   };
 
@@ -2032,8 +2020,7 @@ const App = () => {
             handleRecordToggle={handleRecordToggle}
             isRecording={isRecording}
             isProcessing={isProcessing}
-            transcript={transcript}
-            handleTranscriptChange={handleTranscriptChange}
+            recordingDuration={recordingDuration}
         />;
         break;
       case 'review':
@@ -2103,8 +2090,7 @@ const App = () => {
             handleRecordToggle={handleRecordToggle}
             isRecording={isRecording}
             isProcessing={isProcessing}
-            transcript={transcript}
-            handleTranscriptChange={handleTranscriptChange}
+            recordingDuration={recordingDuration}
         />;
     }
   }
