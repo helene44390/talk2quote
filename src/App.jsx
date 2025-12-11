@@ -1771,10 +1771,22 @@ const App = () => {
 
         recognitionRef.current.onerror = (event) => {
             console.error("Speech Error:", event.error);
-            setIsRecording(false);
+            if (event.error !== 'no-speech' && event.error !== 'aborted') {
+                setIsRecording(false);
+            }
+        };
+
+        recognitionRef.current.onend = () => {
+            if (isRecording) {
+                try {
+                    recognitionRef.current?.start();
+                } catch (err) {
+                    console.error("Recognition restart error:", err);
+                }
+            }
         };
     }
-  }, []);
+  }, [isRecording]);
 
   const handleLogin = async (email, password) => {
       await signInWithEmailAndPassword(auth, email, password);
