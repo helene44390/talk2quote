@@ -1762,10 +1762,22 @@ const App = () => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onloadend = () => {
+        if (!reader.result) {
+          reject(new Error('FileReader returned empty result'));
+          return;
+        }
         const base64String = reader.result.split(',')[1];
+        if (!base64String) {
+          reject(new Error('Failed to extract Base64 string'));
+          return;
+        }
+        console.log("[Base64] Conversion successful. Length:", base64String.length);
         resolve(base64String);
       };
-      reader.onerror = reject;
+      reader.onerror = (error) => {
+        console.error("[Base64] FileReader error:", error);
+        reject(error);
+      };
       reader.readAsDataURL(blob);
     });
   };
@@ -1801,9 +1813,11 @@ const App = () => {
   };
 
   const generateQuoteFromAI = async (audioBase64) => {
+    console.log("[generateQuoteFromAI] Function called with audioBase64 length:", audioBase64 ? audioBase64.length : 'undefined');
     setIsProcessing(true);
 
-    if (!audioBase64) {
+    if (!audioBase64 || audioBase64.length === 0) {
+        console.error("[generateQuoteFromAI] No audio data received");
         alert("No audio recording found");
         setIsProcessing(false);
         return;
@@ -1816,6 +1830,7 @@ const App = () => {
         let parsedResult;
 
         if (isLocalEnvironment) {
+            console.log("[generateQuoteFromAI] Using local mock data");
             await new Promise(resolve => setTimeout(resolve, 2000));
 
             parsedResult = {
@@ -1827,11 +1842,16 @@ const App = () => {
                 ]
             };
         } else {
+            console.log("[generateQuoteFromAI] Calling Cloud Function with payload:", {
+                audioBase64Length: audioBase64.length,
+                type: 'quote'
+            });
             const generateQuoteFunc = httpsCallable(functions, 'generateQuote');
             const result = await generateQuoteFunc({
                 audioBase64: audioBase64,
                 type: 'quote'
             });
+            console.log("[generateQuoteFromAI] Cloud Function response received");
             parsedResult = result.data;
         }
 
@@ -1901,25 +1921,40 @@ const App = () => {
         mediaRecorder.onstop = async () => {
           console.log("[Audio Recording] Recording stopped. Total chunks:", audioChunksRef.current.length);
 
-          const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
-          console.log("[Audio Recording] Blob created. Size:", audioBlob.size, "bytes");
+          try {
+            const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+            console.log("[Audio Recording] Blob created. Size:", audioBlob.size, "bytes");
 
-          if (audioBlob.size < 1000) {
-            alert('Recording too short. Please record for at least 2 seconds.');
+            if (audioBlob.size < 1000) {
+              alert('Recording too short. Please record for at least 2 seconds.');
+              setIsRecording(false);
+              setRecordingDuration(0);
+              stream.getTracks().forEach(track => track.stop());
+              return;
+            }
+
+            setAudioBlob(audioBlob);
+
+            console.log("[Processing] Converting audio to Base64...");
+            const audioBase64 = await blobToBase64(audioBlob);
+            console.log("[Processing] Base64 conversion complete. Length:", audioBase64.length);
+
+            if (!audioBase64 || audioBase64.length === 0) {
+              throw new Error('Base64 conversion resulted in empty string');
+            }
+
+            console.log("[Processing] Calling generateQuoteFromAI with Base64 audio");
+            await generateQuoteFromAI(audioBase64);
+
+            stream.getTracks().forEach(track => track.stop());
+          } catch (error) {
+            console.error("[Audio Recording] Error in onstop handler:", error);
+            alert('Error processing audio: ' + error.message);
+            setIsProcessing(false);
             setIsRecording(false);
             setRecordingDuration(0);
-            return;
+            stream.getTracks().forEach(track => track.stop());
           }
-
-          setAudioBlob(audioBlob);
-
-          console.log("[Processing] Converting audio to Base64...");
-          const audioBase64 = await blobToBase64(audioBlob);
-          console.log("[Processing] Base64 conversion complete. Length:", audioBase64.length);
-
-          setTimeout(() => { generateQuoteFromAI(audioBase64); }, 500);
-
-          stream.getTracks().forEach(track => track.stop());
         };
 
         mediaRecorder.start(1000);
