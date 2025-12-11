@@ -531,7 +531,7 @@ const SignUpScreen = ({ handleSignUp, onBack }) => {
     );
 };
 
-const MainScreen = ({ mockQuote, setMockQuote, isClientInfoSet, handleRecordToggle, isRecording, isProcessing, transcript, setTranscript }) => (
+const MainScreen = ({ mockQuote, setMockQuote, isClientInfoSet, handleRecordToggle, isRecording, isProcessing, transcript, handleTranscriptChange }) => (
     <div className="flex flex-col h-full p-3 bg-gray-50">
       <div className="text-center mb-3">
         <h2 className="text-2xl font-bold text-gray-800 mb-1">Create a Quote</h2>
@@ -586,7 +586,7 @@ const MainScreen = ({ mockQuote, setMockQuote, isClientInfoSet, handleRecordTogg
             <textarea
                 className="mt-4 p-3 bg-white border-2 border-blue-200 rounded-lg text-sm text-gray-700 w-full max-w-xs min-h-[80px] resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
                 value={transcript || ''}
-                onChange={(e) => setTranscript(e.target.value)}
+                onChange={(e) => handleTranscriptChange(e.target.value)}
                 placeholder="Listening..."
             />
         )}
@@ -1780,6 +1780,7 @@ const App = () => {
             }
 
             if (finalTranscript) {
+                console.log("[Smart Append] Adding final text:", finalTranscript);
                 finalTranscriptRef.current += finalTranscript + ' ';
             }
 
@@ -1788,22 +1789,28 @@ const App = () => {
         };
 
         recognitionRef.current.onerror = (event) => {
-            console.error("Speech Error:", event.error);
-            if (event.error !== 'no-speech' && event.error !== 'aborted') {
+            console.error("Speech Recognition Error:", event.error);
+            if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+                alert('Microphone permission denied. Please enable microphone access in your browser settings.');
                 setIsRecording(false);
                 isRecordingRef.current = false;
             }
         };
 
         recognitionRef.current.onend = () => {
-            console.log("Recognition ended. isRecordingRef.current:", isRecordingRef.current);
+            console.log("[Continuous Mic] Recognition ended. isRecordingRef.current:", isRecordingRef.current);
             if (isRecordingRef.current === true) {
+                console.log("[Continuous Mic] Auto-restarting to bridge silence gap...");
                 try {
-                    console.log("Restarting recognition...");
                     recognitionRef.current?.start();
                 } catch (err) {
-                    console.error("Recognition restart error:", err);
+                    console.error("[Continuous Mic] Restart failed:", err);
+                    if (err.message && err.message.includes('already started')) {
+                        console.log("[Continuous Mic] Recognition already running, continuing...");
+                    }
                 }
+            } else {
+                console.log("[Continuous Mic] Recording stopped by user.");
             }
         };
     }
@@ -1842,8 +1849,8 @@ const App = () => {
   const generateQuoteFromAI = async (finalText) => {
     setIsProcessing(true);
 
-    if (!finalText || finalText.trim().length < 5) {
-        alert("Please record more details");
+    if (!finalText || finalText.trim().length < 10) {
+        alert("Recording too short");
         setIsProcessing(false);
         return;
     }
@@ -1914,33 +1921,44 @@ const App = () => {
     }
   };
 
+  const handleTranscriptChange = (newText) => {
+    setTranscript(newText);
+    finalTranscriptRef.current = newText;
+    console.log("[Manual Edit] User edited transcript to:", newText);
+  };
+
   const handleRecordToggle = (e) => {
     if (e) e.preventDefault();
     if (!isRecording && !isClientInfoSet) return;
 
     if (!isRecording) {
+      console.log("[Start Recording] Initializing continuous sticky microphone...");
       setTranscript('');
       finalTranscriptRef.current = '';
       setIsRecording(true);
       isRecordingRef.current = true;
       try {
         recognitionRef.current?.start();
+        console.log("[Start Recording] Speech recognition started successfully.");
       } catch (err) {
-        console.error("Failed to start recognition:", err);
+        console.error("[Start Recording] Failed to start recognition:", err);
         setIsRecording(false);
         isRecordingRef.current = false;
       }
     } else {
+      console.log("[Stop Recording] User stopped recording. Final transcript length:", transcript.trim().length);
       setIsRecording(false);
       isRecordingRef.current = false;
       try { recognitionRef.current?.stop(); } catch (err) { console.error(err); }
 
       const finalText = transcript.trim();
-      if (finalText.length < 5) {
-        alert('Please record more details');
+      if (!finalText || finalText.length < 10) {
+        alert('Recording too short');
+        console.log("[Validation Failed] Transcript too short. Need at least 10 characters.");
         return;
       }
 
+      console.log("[Processing] Sending transcript to AI:", finalText);
       setTimeout(() => { generateQuoteFromAI(finalText); }, 500);
     }
   };
@@ -2015,7 +2033,7 @@ const App = () => {
             isRecording={isRecording}
             isProcessing={isProcessing}
             transcript={transcript}
-            setTranscript={setTranscript}
+            handleTranscriptChange={handleTranscriptChange}
         />;
         break;
       case 'review':
@@ -2086,7 +2104,7 @@ const App = () => {
             isRecording={isRecording}
             isProcessing={isProcessing}
             transcript={transcript}
-            setTranscript={setTranscript}
+            handleTranscriptChange={handleTranscriptChange}
         />;
     }
   }
