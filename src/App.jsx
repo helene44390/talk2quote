@@ -1762,22 +1762,39 @@ const App = () => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onloadend = () => {
+        console.log("[blobToBase64] FileReader finished reading");
+
         if (!reader.result) {
+          console.error("[blobToBase64] FileReader returned empty result");
           reject(new Error('FileReader returned empty result'));
           return;
         }
-        const base64String = reader.result.split(',')[1];
-        if (!base64String) {
+
+        const dataUrl = reader.result;
+        console.log("[blobToBase64] Data URL prefix:", dataUrl.substring(0, 50));
+
+        // Remove the data URL prefix (e.g., "data:audio/webm;base64,")
+        const base64String = dataUrl.split(',')[1];
+
+        if (!base64String || base64String.length === 0) {
+          console.error("[blobToBase64] Failed to extract Base64 string from data URL");
           reject(new Error('Failed to extract Base64 string'));
           return;
         }
-        console.log("[Base64] Conversion successful. Length:", base64String.length);
+
+        console.log("[blobToBase64] Conversion successful:");
+        console.log("  - Base64 length:", base64String.length);
+        console.log("  - First 50 chars:", base64String.substring(0, 50));
+
         resolve(base64String);
       };
+
       reader.onerror = (error) => {
-        console.error("[Base64] FileReader error:", error);
+        console.error("[blobToBase64] FileReader error:", error);
         reject(error);
       };
+
+      console.log("[blobToBase64] Starting to read blob. Size:", blob.size, "Type:", blob.type);
       reader.readAsDataURL(blob);
     });
   };
@@ -1906,24 +1923,43 @@ const App = () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
-        const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4';
-        const mediaRecorder = new MediaRecorder(stream, { mimeType });
+        // Try mime types in order of preference
+        const mimeTypes = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'];
+        let selectedMimeType = 'audio/webm'; // fallback
+
+        for (const type of mimeTypes) {
+          if (MediaRecorder.isTypeSupported(type)) {
+            selectedMimeType = type;
+            console.log("[Audio Recording] Selected MIME type:", type);
+            break;
+          }
+        }
+
+        const mediaRecorder = new MediaRecorder(stream, { mimeType: selectedMimeType });
         mediaRecorderRef.current = mediaRecorder;
         audioChunksRef.current = [];
 
+        console.log("[Audio Recording] MediaRecorder initialized with mimeType:", selectedMimeType);
+
         mediaRecorder.ondataavailable = (event) => {
-          if (event.data.size > 0) {
+          if (event.data && event.data.size > 0) {
             audioChunksRef.current.push(event.data);
-            console.log("[Audio Recording] Chunk received:", event.data.size, "bytes");
+            console.log("[Audio Recording] Chunk received:", event.data.size, "bytes. Total chunks:", audioChunksRef.current.length);
           }
         };
 
         mediaRecorder.onstop = async () => {
-          console.log("[Audio Recording] Recording stopped. Total chunks:", audioChunksRef.current.length);
+          console.log("[Audio Recording] Recording stopped. Total chunks collected:", audioChunksRef.current.length);
 
           try {
-            const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
-            console.log("[Audio Recording] Blob created. Size:", audioBlob.size, "bytes");
+            if (audioChunksRef.current.length === 0) {
+              throw new Error('No audio data was recorded');
+            }
+
+            const audioBlob = new Blob(audioChunksRef.current, { type: selectedMimeType });
+            console.log("[Audio Recording] Audio Blob created:");
+            console.log("  - Blob size:", audioBlob.size, "bytes");
+            console.log("  - Blob type:", audioBlob.type);
 
             if (audioBlob.size < 1000) {
               alert('Recording too short. Please record for at least 2 seconds.');
@@ -1935,17 +1971,20 @@ const App = () => {
 
             setAudioBlob(audioBlob);
 
-            console.log("[Processing] Converting audio to Base64...");
+            console.log("[Processing] Converting Blob to Base64...");
             const audioBase64 = await blobToBase64(audioBlob);
-            console.log("[Processing] Base64 conversion complete. Length:", audioBase64.length);
+            console.log("[Processing] Base64 conversion complete:");
+            console.log("  - Base64 length:", audioBase64 ? audioBase64.length : 0);
+            console.log("  - First 50 chars:", audioBase64 ? audioBase64.substring(0, 50) : 'EMPTY');
 
             if (!audioBase64 || audioBase64.length === 0) {
               throw new Error('Base64 conversion resulted in empty string');
             }
 
-            console.log("[Processing] Calling generateQuoteFromAI with Base64 audio");
+            console.log("[Processing] Calling generateQuoteFromAI with Base64 audio...");
             await generateQuoteFromAI(audioBase64);
 
+            console.log("[Audio Recording] Stopping audio tracks...");
             stream.getTracks().forEach(track => track.stop());
           } catch (error) {
             console.error("[Audio Recording] Error in onstop handler:", error);
@@ -1965,14 +2004,14 @@ const App = () => {
           setRecordingDuration(prev => prev + 1);
         }, 1000);
 
-        console.log("[Audio Recording] MediaRecorder started successfully.");
+        console.log("[Audio Recording] MediaRecorder started successfully. State:", mediaRecorder.state);
       } catch (err) {
         console.error("[Audio Recording] Failed to start:", err);
         alert('Failed to access microphone. Please allow microphone permissions.');
         setIsRecording(false);
       }
     } else {
-      console.log("[Audio Recording] Stopping recording...");
+      console.log("[Audio Recording] User stopped recording. Stopping MediaRecorder...");
       setIsRecording(false);
 
       if (recordingTimerRef.current) {
@@ -1981,6 +2020,7 @@ const App = () => {
       }
 
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        console.log("[Audio Recording] MediaRecorder state before stop:", mediaRecorderRef.current.state);
         mediaRecorderRef.current.stop();
       }
     }
