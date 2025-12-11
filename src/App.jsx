@@ -536,10 +536,9 @@ const MainScreen = ({
   setMockQuote,
   isClientInfoSet,
   handleRecordToggle,
-  handleGenerateQuote,
   isRecording,
   isProcessing,
-  isAudioReady,
+  isFinalizing,
   recordingDuration
 }) => (
     <div className="flex flex-col h-full p-3 bg-gray-50">
@@ -584,7 +583,7 @@ const MainScreen = ({
           className={`w-28 h-28 flex items-center justify-center rounded-full transition-all duration-300 transform shadow-2xl relative ${
             isRecording
               ? 'bg-red-500 scale-110 animate-pulse cursor-pointer'
-              : isProcessing
+              : (isProcessing || isFinalizing)
               ? 'bg-gray-400 cursor-not-allowed'
               : isClientInfoSet
               ? 'bg-blue-600 hover:bg-blue-700 cursor-pointer'
@@ -593,7 +592,7 @@ const MainScreen = ({
           role="button"
           tabIndex={0}
         >
-          {isProcessing ? (
+          {(isProcessing || isFinalizing) ? (
              <Loader size={44} className="animate-spin text-white z-10" />
           ) : (
              <Mic size={44} className="text-white z-10" />
@@ -607,31 +606,15 @@ const MainScreen = ({
                 <p className="text-sm text-red-600 mt-1">{Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}</p>
             </div>
         )}
-
-        {isAudioReady && !isRecording && !isProcessing && (
-          <div className="w-full max-w-xs">
-            <button
-              onClick={handleGenerateQuote}
-              disabled={!isAudioReady || isProcessing}
-              className="w-full py-4 px-6 text-lg font-bold text-white bg-gradient-to-r from-green-500 to-green-600 rounded-xl hover:from-green-600 hover:to-green-700 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:scale-105 flex items-center justify-center gap-2"
-            >
-              <Check size={24} />
-              Generate Quote with AI
-            </button>
-            <p className="text-center text-xs text-gray-600 mt-2">
-              Audio recorded successfully. Click to generate your quote.
-            </p>
-          </div>
-        )}
       </div>
 
       <p className="text-center text-sm font-semibold text-gray-700 mb-2">
-        {isProcessing
+        {isFinalizing
+          ? '⏳ Finalizing Audio...'
+          : isProcessing
           ? '🤖 AI IS PROCESSING YOUR QUOTE...'
           : isRecording
           ? '🔴 RECORDING... (Tap to Stop)'
-          : isAudioReady
-          ? '✅ Recording Complete'
           : isClientInfoSet
           ? '🎤 Tap to Start Recording'
           : '⚠️  Enter email above to start'
@@ -1708,8 +1691,8 @@ const App = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isFinalizing, setIsFinalizing] = useState(false);
   const [loadingQuotes, setLoadingQuotes] = useState(false);
-  const [isAudioReady, setIsAudioReady] = useState(false);
 
   const [audioBlob, setAudioBlob] = useState(null);
   const [recordingDuration, setRecordingDuration] = useState(0);
@@ -2028,101 +2011,6 @@ const App = () => {
     }
   };
 
-  const stopRecording = () => {
-    return new Promise((resolve, reject) => {
-      const mediaRecorder = mediaRecorderRef.current;
-      const stream = audioStreamRef.current;
-
-      if (!mediaRecorder) {
-        console.error("[stopRecording] ❌ No MediaRecorder instance");
-        reject(new Error('No MediaRecorder instance'));
-        return;
-      }
-
-      console.log("\n═══════════════════════════════════════");
-      console.log("⏹️  STOP RECORDING INITIATED");
-      console.log("═══════════════════════════════════════");
-      console.log("[stopRecording] Current state:", mediaRecorder.state);
-      console.log("[stopRecording] Chunks collected so far:", audioChunksRef.current.length);
-
-      mediaRecorder.onstop = () => {
-        console.log("\n[stopRecording] ⚠️  ONSTOP EVENT FIRED");
-        console.log("═══════════════════════════════════════");
-        console.log("[stopRecording] Total chunks in array:", audioChunksRef.current.length);
-
-        try {
-          // Validate chunks exist
-          if (audioChunksRef.current.length === 0) {
-            console.error("[stopRecording] ❌ CRITICAL: No audio chunks recorded!");
-            reject(new Error('No audio chunks recorded'));
-            return;
-          }
-
-          // Log each chunk size
-          audioChunksRef.current.forEach((chunk, index) => {
-            console.log(`[stopRecording]   Chunk ${index + 1}: ${chunk.size} bytes`);
-          });
-
-          // Create blob from chunks
-          const blob = new Blob(audioChunksRef.current, { type: mimeTypeRef.current });
-
-          console.log("\n[stopRecording] 📦 BLOB CREATED");
-          console.log("═══════════════════════════════════════");
-          console.log("  Size:", blob.size, "bytes");
-          console.log("  Type:", blob.type);
-          console.log("═══════════════════════════════════════");
-
-          // CRITICAL VALIDATION: Check blob size
-          if (!blob.size || blob.size === 0) {
-            console.error("[stopRecording] ❌ CRITICAL: Blob size is 0!");
-            reject(new Error('Recording was empty'));
-            return;
-          }
-
-          if (blob.size < 100) {
-            console.error("[stopRecording] ❌ CRITICAL: Blob size too small:", blob.size);
-            reject(new Error('Recording too short'));
-            return;
-          }
-
-          // Stop all audio tracks
-          if (stream) {
-            stream.getTracks().forEach(track => {
-              track.stop();
-              console.log("[stopRecording] ✓ Stopped audio track:", track.label);
-            });
-            audioStreamRef.current = null;
-          }
-
-          console.log("[stopRecording] ✅ SUCCESS - Blob is valid and ready");
-          resolve(blob);
-
-        } catch (error) {
-          console.error("[stopRecording] ❌ Error in onstop handler:", error);
-          reject(error);
-        }
-      };
-
-      mediaRecorder.onerror = (error) => {
-        console.error("[stopRecording] ❌ MediaRecorder error event:", error);
-        reject(error);
-      };
-
-      // Explicitly stop the recorder
-      if (mediaRecorder.state === 'recording') {
-        console.log("[stopRecording] Calling mediaRecorder.stop()...");
-        mediaRecorder.stop();
-      } else if (mediaRecorder.state === 'paused') {
-        console.log("[stopRecording] Recorder is paused, resuming then stopping...");
-        mediaRecorder.resume();
-        mediaRecorder.stop();
-      } else {
-        console.error("[stopRecording] ❌ Unexpected state:", mediaRecorder.state);
-        reject(new Error('MediaRecorder in unexpected state: ' + mediaRecorder.state));
-      }
-    });
-  };
-
   const handleRecordToggle = async (e) => {
     if (e) e.preventDefault();
 
@@ -2136,10 +2024,6 @@ const App = () => {
     // START RECORDING
     // ========================================
     if (!isRecording) {
-      // Reset audio ready state
-      setIsAudioReady(false);
-      setAudioBlob(null);
-
       console.log("\n═══════════════════════════════════════");
       console.log("🎤 STARTING AUDIO RECORDING");
       console.log("═══════════════════════════════════════");
@@ -2156,8 +2040,8 @@ const App = () => {
         audioStreamRef.current = stream;
         console.log("[handleRecordToggle] ✓ Microphone access granted");
 
-        // Check supported MIME types in order of preference
-        const mimeTypes = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'];
+        // Check supported MIME types - PRIORITY: audio/webm first (for Android)
+        const mimeTypes = ['audio/webm', 'audio/webm;codecs=opus', 'audio/mp4'];
         let selectedMimeType = 'audio/webm'; // fallback
 
         for (const type of mimeTypes) {
@@ -2181,13 +2065,118 @@ const App = () => {
         audioChunksRef.current = [];
         console.log("[handleRecordToggle] ✓ Chunks array cleared");
 
+        // ========================================
+        // ONSTOP HANDLER - THE RACE CONDITION FIX
+        // ========================================
+        mediaRecorder.onstop = async () => {
+          console.log("\n═══════════════════════════════════════");
+          console.log("⏹️  ONSTOP EVENT FIRED");
+          console.log("═══════════════════════════════════════");
+          console.log("[onstop] Total chunks:", audioChunksRef.current.length);
+
+          // Show "Finalizing Audio..." message
+          setIsFinalizing(true);
+
+          try {
+            // Log each chunk
+            audioChunksRef.current.forEach((chunk, index) => {
+              console.log(`[onstop] Chunk ${index + 1}: ${chunk.size} bytes`);
+            });
+
+            // Validate chunks exist
+            if (audioChunksRef.current.length === 0) {
+              console.error("[onstop] ❌ No chunks recorded!");
+              alert('Recording failed: No audio data captured. Please try again.');
+              setIsFinalizing(false);
+              setIsProcessing(false);
+              setRecordingDuration(0);
+              return;
+            }
+
+            // Create blob from chunks
+            const blob = new Blob(audioChunksRef.current, { type: mimeTypeRef.current });
+
+            console.log("\n[onstop] 📦 BLOB CREATED");
+            console.log("═══════════════════════════════════════");
+            console.log("  Size:", blob.size, "bytes");
+            console.log("  Type:", blob.type);
+            console.log("═══════════════════════════════════════");
+
+            // CRITICAL VALIDATION: Check blob size
+            if (!blob.size || blob.size === 0) {
+              console.error("[onstop] ❌ Blob size is 0!");
+              alert('Recording failed: Audio file empty. Please try again.');
+              setIsFinalizing(false);
+              setIsProcessing(false);
+              setRecordingDuration(0);
+              return;
+            }
+
+            if (blob.size < 100) {
+              console.error("[onstop] ❌ Blob too small:", blob.size, "bytes");
+              alert('Recording failed: Audio file empty. Please record for at least 3 seconds.');
+              setIsFinalizing(false);
+              setIsProcessing(false);
+              setRecordingDuration(0);
+              return;
+            }
+
+            // Store blob
+            setAudioBlob(blob);
+
+            // Stop all tracks
+            if (audioStreamRef.current) {
+              audioStreamRef.current.getTracks().forEach(track => {
+                track.stop();
+                console.log("[onstop] ✓ Stopped track:", track.label);
+              });
+              audioStreamRef.current = null;
+            }
+
+            console.log("[onstop] ✅ Blob validated successfully");
+
+            // Brief delay to show "Finalizing..." message
+            await new Promise(resolve => setTimeout(resolve, 800));
+
+            // Switch to processing state
+            setIsFinalizing(false);
+            setIsProcessing(true);
+
+            console.log("\n[onstop] 🔄 Converting to Base64...");
+            const audioBase64 = await blobToBase64(blob);
+
+            console.log("\n[onstop] ✅ BASE64 CONVERSION COMPLETE");
+            console.log("═══════════════════════════════════════");
+            console.log("  Length:", audioBase64.length, "characters");
+            console.log("  First 100:", audioBase64.substring(0, 100));
+            console.log("═══════════════════════════════════════");
+
+            // Final validation
+            if (!audioBase64 || audioBase64.length === 0) {
+              throw new Error('Base64 conversion produced empty result');
+            }
+
+            console.log("[onstop] 🚀 Sending to AI backend...");
+            await generateQuoteFromAI(audioBase64);
+
+            setRecordingDuration(0);
+
+          } catch (error) {
+            console.error("\n[onstop] ❌ ERROR:", error);
+            alert('Error processing recording: ' + error.message);
+            setIsFinalizing(false);
+            setIsProcessing(false);
+            setRecordingDuration(0);
+          }
+        };
+
         // Handle incoming audio data
         mediaRecorder.ondataavailable = (event) => {
           if (event.data && event.data.size > 0) {
             audioChunksRef.current.push(event.data);
-            console.log("[handleRecordToggle] 📦 Chunk received:", event.data.size, "bytes | Total chunks:", audioChunksRef.current.length);
+            console.log("[ondataavailable] 📦 Chunk received:", event.data.size, "bytes | Total:", audioChunksRef.current.length);
           } else {
-            console.warn("[handleRecordToggle] ⚠️  Empty chunk received (size: " + (event.data ? event.data.size : 'null') + ")");
+            console.warn("[ondataavailable] ⚠️  Empty chunk (size:", event.data ? event.data.size : 'null', ")");
           }
         };
 
@@ -2201,24 +2190,23 @@ const App = () => {
           setRecordingDuration(prev => prev + 1);
         }, 1000);
 
-        console.log("[handleRecordToggle] ✅ Recording started successfully");
-        console.log("  - MediaRecorder state:", mediaRecorder.state);
-        console.log("  - MIME type:", selectedMimeType);
+        console.log("[handleRecordToggle] ✅ Recording started");
+        console.log("  - State:", mediaRecorder.state);
+        console.log("  - MIME:", selectedMimeType);
 
       } catch (err) {
-        console.error("[handleRecordToggle] ❌ Failed to start recording:", err);
+        console.error("[handleRecordToggle] ❌ Failed to start:", err);
         alert('Failed to access microphone. Please allow microphone permissions and try again.');
         setIsRecording(false);
-        setIsAudioReady(false);
       }
 
     }
     // ========================================
-    // STOP RECORDING
+    // STOP RECORDING (JUST STOPS, DOESN'T PROCESS)
     // ========================================
     else {
       console.log("\n═══════════════════════════════════════");
-      console.log("🛑 USER STOPPED RECORDING");
+      console.log("🛑 USER CLICKED STOP");
       console.log("═══════════════════════════════════════");
 
       setIsRecording(false);
@@ -2229,92 +2217,28 @@ const App = () => {
         recordingTimerRef.current = null;
       }
 
-      try {
-        console.log("[handleRecordToggle] Calling stopRecording()...");
-        const validatedBlob = await stopRecording();
+      const mediaRecorder = mediaRecorderRef.current;
 
-        console.log("\n═══════════════════════════════════════");
-        console.log("✅ RECORDING STOPPED SUCCESSFULLY");
-        console.log("═══════════════════════════════════════");
-        console.log("  Blob size:", validatedBlob.size, "bytes");
-        console.log("  Blob type:", validatedBlob.type);
-        console.log("═══════════════════════════════════════\n");
-
-        // Store validated blob in state
-        setAudioBlob(validatedBlob);
-        setIsAudioReady(true);
-        setRecordingDuration(0);
-
-        console.log("[handleRecordToggle] ✅ Audio is READY - Generate button enabled");
-
-      } catch (error) {
-        console.error("\n═══════════════════════════════════════");
-        console.error("❌ RECORDING ERROR");
-        console.error("═══════════════════════════════════════");
-        console.error("Error:", error.message);
-        console.error("═══════════════════════════════════════\n");
-
-        // Show user-friendly error
-        alert('Error: Recording was empty. Please try again and speak clearly for at least 3 seconds.');
-
-        // Reset UI state
-        setIsRecording(false);
-        setIsAudioReady(false);
-        setAudioBlob(null);
-        setRecordingDuration(0);
-
-        // Clean up stream
-        if (audioStreamRef.current) {
-          audioStreamRef.current.getTracks().forEach(track => track.stop());
-          audioStreamRef.current = null;
-        }
-      }
-    }
-  };
-
-  const handleGenerateQuote = async () => {
-    if (!audioBlob || !isAudioReady) {
-      console.error("[handleGenerateQuote] ❌ No validated audio blob available");
-      alert('No recording available. Please record first.');
-      return;
-    }
-
-    console.log("\n═══════════════════════════════════════");
-    console.log("🚀 GENERATE QUOTE CLICKED");
-    console.log("═══════════════════════════════════════");
-    console.log("  Blob size:", audioBlob.size, "bytes");
-    console.log("  Blob type:", audioBlob.type);
-
-    setIsProcessing(true);
-
-    try {
-      console.log("[handleGenerateQuote] Converting blob to Base64...");
-      const audioBase64 = await blobToBase64(audioBlob);
-
-      console.log("\n═══════════════════════════════════════");
-      console.log("✅ BASE64 CONVERSION COMPLETE");
-      console.log("═══════════════════════════════════════");
-      console.log("  Base64 length:", audioBase64.length, "characters");
-      console.log("  First 100 chars:", audioBase64.substring(0, 100));
-      console.log("  Last 50 chars:", audioBase64.substring(audioBase64.length - 50));
-      console.log("═══════════════════════════════════════\n");
-
-      // Final validation before sending
-      if (!audioBase64 || audioBase64.length === 0) {
-        throw new Error('Base64 conversion produced empty result');
+      if (!mediaRecorder) {
+        console.error("[handleRecordToggle] ❌ No MediaRecorder instance");
+        alert('Recording error: No recorder found');
+        return;
       }
 
-      console.log("[handleGenerateQuote] 🌐 Sending to AI backend...");
-      await generateQuoteFromAI(audioBase64);
-
-      // Clear audio state after successful generation
-      setAudioBlob(null);
-      setIsAudioReady(false);
-
-    } catch (error) {
-      console.error("\n❌ GENERATE QUOTE ERROR:", error);
-      alert('Error generating quote: ' + error.message);
-      setIsProcessing(false);
+      // CRITICAL: Just call stop() - processing happens in onstop handler
+      if (mediaRecorder.state === 'recording') {
+        console.log("[handleRecordToggle] Calling mediaRecorder.stop()...");
+        console.log("[handleRecordToggle] ⚠️  Processing will happen in onstop handler");
+        mediaRecorder.stop();
+      } else if (mediaRecorder.state === 'paused') {
+        console.log("[handleRecordToggle] Resuming then stopping...");
+        mediaRecorder.resume();
+        mediaRecorder.stop();
+      } else {
+        console.error("[handleRecordToggle] ❌ Unexpected state:", mediaRecorder.state);
+        alert('Recording error: Unexpected recorder state');
+        setIsProcessing(false);
+      }
     }
   };
 
@@ -2385,10 +2309,9 @@ const App = () => {
             setMockQuote={setMockQuote}
             isClientInfoSet={isClientInfoSet}
             handleRecordToggle={handleRecordToggle}
-            handleGenerateQuote={handleGenerateQuote}
             isRecording={isRecording}
             isProcessing={isProcessing}
-            isAudioReady={isAudioReady}
+            isFinalizing={isFinalizing}
             recordingDuration={recordingDuration}
         />;
         break;
@@ -2457,10 +2380,9 @@ const App = () => {
             setMockQuote={setMockQuote}
             isClientInfoSet={isClientInfoSet}
             handleRecordToggle={handleRecordToggle}
-            handleGenerateQuote={handleGenerateQuote}
             isRecording={isRecording}
             isProcessing={isProcessing}
-            isAudioReady={isAudioReady}
+            isFinalizing={isFinalizing}
             recordingDuration={recordingDuration}
         />;
     }
