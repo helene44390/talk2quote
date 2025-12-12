@@ -578,7 +578,9 @@ const MainScreen = ({
   isRecording,
   isProcessing,
   isFinalizing,
-  recordingDuration
+  recordingDuration,
+  useDefaultPricing,
+  setUseDefaultPricing
 }) => (
     <div className="flex flex-col h-full p-3 bg-gray-50">
       <div className="text-center mb-3">
@@ -659,6 +661,20 @@ const MainScreen = ({
           : '⚠️  Enter email above to start'
         }
       </p>
+
+      <div className="flex justify-between items-center text-sm text-gray-600 mt-4 p-2 bg-gray-100 rounded-lg">
+        <span>Use Default Pricing/Items:</span>
+        <label className="relative inline-flex items-center cursor-pointer">
+          <input
+            type="checkbox"
+            checked={useDefaultPricing}
+            onChange={() => setUseDefaultPricing(!useDefaultPricing)}
+            className="sr-only peer"
+          />
+          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+          <span className="ml-3 font-medium text-gray-900">{useDefaultPricing ? 'ON' : 'OFF'}</span>
+        </label>
+      </div>
     </div>
 );
 
@@ -1974,6 +1990,41 @@ const Layout = ({ children, isMenuOpen, setIsMenuOpen, navigateTo, handleLogout 
     </div>
 );
 
+const SetupDefaultsScreen = ({ user, navigateTo, setHasSetupDefaults }) => {
+    const handleSaveSkip = async (skipped = false) => {
+        if (!user) return;
+        const settingsRef = doc(db, 'users', user.uid, 'settings', 'defaultItems');
+        await setDoc(settingsRef, { setupCompleted: !skipped, setupSkipped: skipped }, { merge: true });
+        setHasSetupDefaults(true);
+        navigateTo('main');
+    };
+
+    return (
+        <div className="p-4 bg-white h-full flex flex-col justify-center items-center text-center">
+            <FileText size={48} className="text-blue-600 mb-4" />
+            <h2 className="text-2xl font-bold mb-3">Setup Your Default Quote Items</h2>
+            <p className="text-gray-600 mb-6 max-w-sm">
+                Pre-set your most common labour hours, materials, or services now.
+                The AI will use these prices when you mention them in your audio.
+            </p>
+            <div className="space-y-3 w-full max-w-sm">
+                <button
+                    onClick={() => navigateTo('quoteItemsSettings')}
+                    className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold"
+                >
+                    Setup Defaults Now
+                </button>
+                <button
+                    onClick={() => handleSaveSkip(true)}
+                    className="w-full py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-semibold"
+                >
+                    Skip for Later
+                </button>
+            </div>
+        </div>
+    );
+};
+
 const App = () => {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -2025,6 +2076,8 @@ const App = () => {
 
   const [previousQuotes, setPreviousQuotes] = useState([]);
   const [defaultItems, setDefaultItems] = useState([]);
+  const [hasSetupDefaults, setHasSetupDefaults] = useState(false);
+  const [useDefaultPricing, setUseDefaultPricing] = useState(true);
   const [referralCode, setReferralCode] = useState('');
 
   useEffect(() => {
@@ -2084,13 +2137,17 @@ const App = () => {
 
     const loadDefaultItems = async () => {
       try {
-        const itemsRef = doc(db, 'users', user.uid, 'settings', 'defaultItems');
-        const itemsSnap = await getDoc(itemsRef);
-        if (itemsSnap.exists()) {
-          setDefaultItems(itemsSnap.data().items || []);
+        const settingsDocRef = doc(db, 'users', user.uid, 'settings', 'defaultItems');
+        const settingsSnap = await getDoc(settingsDocRef);
+
+        if (settingsSnap.exists()) {
+          setDefaultItems(settingsSnap.data().items || []);
+          setHasSetupDefaults(settingsSnap.data().setupCompleted || settingsSnap.data().setupSkipped || false);
+        } else {
+          setHasSetupDefaults(false);
         }
       } catch (error) {
-        console.error('Error loading default items:', error);
+        console.error('Error loading default items status:', error);
       }
     };
 
@@ -2221,7 +2278,7 @@ const App = () => {
       navigateTo('review');
   };
 
-  const generateQuoteFromAI = async (audioBase64) => {
+  const generateQuoteFromAI = async (audioBase64, useDefaults = false) => {
     console.log("\n═══════════════════════════════════════");
     console.log("🤖 GENERATING QUOTE FROM AI");
     console.log("═══════════════════════════════════════");
@@ -2284,7 +2341,8 @@ const App = () => {
             const generateQuoteFunc = httpsCallable(functions, 'generateQuote');
             const result = await generateQuoteFunc({
                 audioBase64: audioBase64,
-                type: 'quote'
+                type: 'quote',
+                useDefaults: useDefaults
             });
 
             console.log("[generateQuoteFromAI] ✅ Cloud Function response received");
@@ -2491,7 +2549,7 @@ const App = () => {
             }
 
             console.log("[onstop] 🚀 Sending to AI backend...");
-            await generateQuoteFromAI(audioBase64);
+            await generateQuoteFromAI(audioBase64, useDefaultPricing);
 
             setRecordingDuration(0);
 
@@ -2638,16 +2696,22 @@ const App = () => {
   } else {
     switch (currentPage) {
       case 'main':
-        content = <MainScreen
-            mockQuote={mockQuote}
-            setMockQuote={setMockQuote}
-            isClientInfoSet={isClientInfoSet}
-            handleRecordToggle={handleRecordToggle}
-            isRecording={isRecording}
-            isProcessing={isProcessing}
-            isFinalizing={isFinalizing}
-            recordingDuration={recordingDuration}
-        />;
+        if (!hasSetupDefaults) {
+          content = <SetupDefaultsScreen user={user} navigateTo={navigateTo} setHasSetupDefaults={setHasSetupDefaults} />;
+        } else {
+          content = <MainScreen
+              mockQuote={mockQuote}
+              setMockQuote={setMockQuote}
+              isClientInfoSet={isClientInfoSet}
+              handleRecordToggle={handleRecordToggle}
+              isRecording={isRecording}
+              isProcessing={isProcessing}
+              isFinalizing={isFinalizing}
+              recordingDuration={recordingDuration}
+              useDefaultPricing={useDefaultPricing}
+              setUseDefaultPricing={setUseDefaultPricing}
+          />;
+        }
         break;
       case 'review':
         content = <ReviewScreen
