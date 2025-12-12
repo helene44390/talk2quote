@@ -27,7 +27,7 @@ exports.generateQuote = onCall({ region: DEPLOY_REGION, timeoutSeconds: 120, mem
   if (type !== 'rewrite' && !audioBase64) throw new HttpsError('invalid-argument', 'No audio.');
 
   // Using the final working model ID
-  const MODEL_NAME = "gemini-2.5-flash"; 
+  const MODEL_NAME = "gemini-1.5-flash"; 
   const PROJECT_ID = "talk2quote-app"; 
 
   // Vertex AI URL MUST match the region

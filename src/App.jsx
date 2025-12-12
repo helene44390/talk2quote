@@ -623,7 +623,7 @@ const MainScreen = ({
     </div>
 );
 
-const ReviewScreen = ({ mockQuote, setMockQuote, handleItemChange, navigateTo, handleQuoteSent }) => {
+const ReviewScreen = ({ mockQuote, setMockQuote, handleItemChange, navigateTo, handleQuoteSent, defaultItems = [] }) => {
   const [isRewriting, setIsRewriting] = useState(false);
   const [originalSummary, setOriginalSummary] = useState('');
   const [hasAiVersion, setHasAiVersion] = useState(false);
@@ -761,13 +761,41 @@ const ReviewScreen = ({ mockQuote, setMockQuote, handleItemChange, navigateTo, h
           ) : (
             <p className="text-gray-500 italic p-4 bg-gray-100 rounded-lg">No line items generated yet. Record a job description to generate items.</p>
           )}
-          <div
-            onClick={handleAddItem}
-            className="text-blue-500 hover:text-blue-700 text-sm font-semibold flex items-center pt-2 cursor-pointer"
-            role="button"
-            tabIndex={0}
-          >
-              <Pencil size={16} className="mr-1"/> Add Item
+
+          <div className="pt-4 mt-2 border-t border-gray-200">
+            {defaultItems.length > 0 && (
+              <div className="mb-4">
+                <p className="text-xs text-gray-500 mb-2 font-medium">Quick Add from Defaults:</p>
+                <div className="flex flex-wrap gap-2">
+                  {defaultItems.map(defaultItem => (
+                    <button
+                      key={defaultItem.id}
+                      onClick={() => {
+                        const newId = mockQuote.items.length > 0 ? Math.max(...mockQuote.items.map(i => i.id)) + 1 : 1;
+                        const newItem = {
+                          id: newId,
+                          description: defaultItem.description,
+                          qty: defaultItem.qty,
+                          price: defaultItem.price
+                        };
+                        setMockQuote({...mockQuote, items: [...mockQuote.items, newItem]});
+                      }}
+                      className="px-3 py-1.5 bg-gray-100 hover:bg-blue-100 text-gray-700 hover:text-blue-700 rounded-lg text-xs font-medium transition"
+                    >
+                      + {defaultItem.description.substring(0, 20)}{defaultItem.description.length > 20 ? '...' : ''}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div
+              onClick={handleAddItem}
+              className="text-blue-500 hover:text-blue-700 text-sm font-semibold flex items-center cursor-pointer"
+              role="button"
+              tabIndex={0}
+            >
+              <Pencil size={16} className="mr-1"/> Add New Item Manually
+            </div>
           </div>
         </div>
 
@@ -1598,6 +1626,185 @@ const CompanyDetailsScreen = ({ companyDetails, setCompanyDetails, user }) => {
     );
 };
 
+const QuoteItemsSettingsScreen = ({ user, defaultItems, setDefaultItems }) => {
+    const [editingItem, setEditingItem] = useState(null);
+    const [isAdding, setIsAdding] = useState(false);
+    const [formData, setFormData] = useState({ description: '', qty: 1, price: 0 });
+    const [saving, setSaving] = useState(false);
+
+    const saveDefaultItems = async (items) => {
+        if (!user) return;
+        setSaving(true);
+        try {
+            const itemsRef = doc(db, 'users', user.uid, 'settings', 'defaultItems');
+            await setDoc(itemsRef, { items });
+            setDefaultItems(items);
+        } catch (error) {
+            console.error('Error saving default items:', error);
+            alert('Failed to save items');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleAddNew = () => {
+        setIsAdding(true);
+        setFormData({ description: '', qty: 1, price: 0 });
+    };
+
+    const handleEdit = (item) => {
+        setEditingItem(item.id);
+        setFormData(item);
+    };
+
+    const handleSave = async () => {
+        if (!formData.description.trim()) {
+            alert('Please enter a description');
+            return;
+        }
+
+        let updatedItems;
+        if (isAdding) {
+            const newItem = {
+                id: Date.now(),
+                description: formData.description,
+                qty: Number(formData.qty) || 1,
+                price: Number(formData.price) || 0
+            };
+            updatedItems = [...defaultItems, newItem];
+        } else {
+            updatedItems = defaultItems.map(item =>
+                item.id === editingItem ? { ...item, ...formData } : item
+            );
+        }
+
+        await saveDefaultItems(updatedItems);
+        setIsAdding(false);
+        setEditingItem(null);
+        setFormData({ description: '', qty: 1, price: 0 });
+    };
+
+    const handleDelete = async (itemId) => {
+        if (!confirm('Delete this default item?')) return;
+        const updatedItems = defaultItems.filter(item => item.id !== itemId);
+        await saveDefaultItems(updatedItems);
+    };
+
+    const handleCancel = () => {
+        setIsAdding(false);
+        setEditingItem(null);
+        setFormData({ description: '', qty: 1, price: 0 });
+    };
+
+    return (
+        <div className="p-4 bg-gray-50 h-full overflow-y-auto pb-20">
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">Default Quote Items</h2>
+            <p className="text-sm text-gray-500 mb-4">Save frequently used items with default quantities and prices.</p>
+
+            {(isAdding || editingItem) && (
+                <div className="bg-white p-4 rounded-xl shadow-lg mb-4 space-y-3">
+                    <h3 className="font-semibold text-blue-700">{isAdding ? 'Add New Item' : 'Edit Item'}</h3>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                        <textarea
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 resize-none"
+                            rows={2}
+                            value={formData.description}
+                            onChange={(e) => setFormData({...formData, description: e.target.value})}
+                            placeholder="e.g., Standard Labour Hour, GPO Installation, etc."
+                        />
+                    </div>
+
+                    <div className="flex space-x-3">
+                        <div className="flex-1">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Default Qty</label>
+                            <input
+                                type="number"
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                                value={formData.qty}
+                                onChange={(e) => setFormData({...formData, qty: e.target.value})}
+                            />
+                        </div>
+                        <div className="flex-1">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Default Price ($)</label>
+                            <input
+                                type="number"
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                                value={formData.price}
+                                onChange={(e) => setFormData({...formData, price: e.target.value})}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="flex space-x-2 pt-2">
+                        <button
+                            onClick={handleSave}
+                            disabled={saving}
+                            className="flex-1 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold flex items-center justify-center"
+                        >
+                            {saving ? <Loader size={18} className="animate-spin"/> : <><Check size={18} className="mr-1"/> Save</>}
+                        </button>
+                        <button
+                            onClick={handleCancel}
+                            className="flex-1 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-semibold"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {!isAdding && !editingItem && (
+                <button
+                    onClick={handleAddNew}
+                    className="w-full py-3 mb-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold flex items-center justify-center"
+                >
+                    <Pencil size={18} className="mr-2"/> Add New Default Item
+                </button>
+            )}
+
+            <div className="space-y-3">
+                {defaultItems.length === 0 ? (
+                    <div className="text-center py-10 bg-white rounded-xl border border-dashed border-gray-300">
+                        <p className="text-gray-400 mb-2">No default items yet.</p>
+                        <p className="text-sm text-blue-500">Add your first frequently used item!</p>
+                    </div>
+                ) : (
+                    defaultItems.map((item) => (
+                        <div key={item.id} className="bg-white p-4 rounded-xl shadow-md">
+                            <div className="flex justify-between items-start mb-2">
+                                <p className="font-medium text-gray-800 flex-1">{item.description}</p>
+                                <div className="flex space-x-2 ml-2">
+                                    <button
+                                        onClick={() => handleEdit(item)}
+                                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
+                                    >
+                                        <Pencil size={16}/>
+                                    </button>
+                                    <button
+                                        onClick={() => handleDelete(item.id)}
+                                        className="p-1.5 text-red-600 hover:bg-red-50 rounded"
+                                    >
+                                        <X size={16}/>
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="flex space-x-4 text-sm text-gray-600">
+                                <span>Qty: <strong>{item.qty}</strong></span>
+                                <span>Price: <strong>${Number(item.price).toFixed(2)}</strong></span>
+                                <span className="ml-auto text-green-600 font-semibold">
+                                    Total: ${(Number(item.qty) * Number(item.price)).toFixed(2)}
+                                </span>
+                            </div>
+                        </div>
+                    ))
+                )}
+            </div>
+        </div>
+    );
+};
+
 const SubscriptionScreen = ({ user }) => {
     const [subscription, setSubscription] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -1655,6 +1862,7 @@ const MenuDrawer = ({ isMenuOpen, navigateTo, handleLogout }) => (
           <MenuItem icon={Gift} label="Referral Program" onClick={() => navigateTo('referral')} />
           <MenuItem icon={TrendingUp} label="Accounting Integration" onClick={() => navigateTo('accounting')} />
           <MenuItem icon={Building} label="Company Details" onClick={() => navigateTo('companyDetails')} />
+          <MenuItem icon={FileText} label="Default Quote Items" onClick={() => navigateTo('quoteItemsSettings')} />
           <MenuItem icon={CreditCard} label="Subscription" onClick={() => navigateTo('subscription')} />
           <MenuItem icon={Settings} label="Settings" onClick={() => navigateTo('settings')} />
           <div className="pt-6 border-t mt-6">
@@ -1737,6 +1945,7 @@ const App = () => {
   });
 
   const [previousQuotes, setPreviousQuotes] = useState([]);
+  const [defaultItems, setDefaultItems] = useState([]);
 
   useEffect(() => {
     const initAuth = async () => {
@@ -1788,6 +1997,24 @@ const App = () => {
     };
 
     loadCompanyDetails();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const loadDefaultItems = async () => {
+      try {
+        const itemsRef = doc(db, 'users', user.uid, 'settings', 'defaultItems');
+        const itemsSnap = await getDoc(itemsRef);
+        if (itemsSnap.exists()) {
+          setDefaultItems(itemsSnap.data().items || []);
+        }
+      } catch (error) {
+        console.error('Error loading default items:', error);
+      }
+    };
+
+    loadDefaultItems();
   }, [user]);
 
   const isClientInfoSet = mockQuote.clientEmail && mockQuote.clientEmail.trim() !== '';
@@ -2325,6 +2552,7 @@ const App = () => {
             handleItemChange={handleItemChange}
             navigateTo={navigateTo}
             handleQuoteSent={handleQuoteSent}
+            defaultItems={defaultItems}
         />;
         break;
       case 'pdfPreview':
@@ -2357,6 +2585,13 @@ const App = () => {
             companyDetails={companyDetails}
             setCompanyDetails={setCompanyDetails}
             user={user}
+        />;
+        break;
+      case 'quoteItemsSettings':
+        content = <QuoteItemsSettingsScreen
+            user={user}
+            defaultItems={defaultItems}
+            setDefaultItems={setDefaultItems}
         />;
         break;
       case 'subscription':
