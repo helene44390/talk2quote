@@ -1369,9 +1369,9 @@ const AccountingScreen = ({ user }) => {
     if (loading) return <div className="p-4 bg-gray-50 flex justify-center"><Loader className="animate-spin text-gray-500"/></div>;
 
     const providers = [
-        { id: 'xero', name: 'Xero', color: 'bg-blue-100 text-blue-700' },
-        { id: 'quickbooks', name: 'QuickBooks', color: 'bg-green-100 text-green-700' },
-        { id: 'myob', name: 'MYOB', color: 'bg-yellow-100 text-yellow-700' },
+        { id: 'xero', name: 'Xero', color: 'bg-blue-100 text-blue-700', logo: '/xero_logo.png' },
+        { id: 'quickbooks', name: 'QuickBooks', color: 'bg-green-100 text-green-700', logo: '/quickbooks_logo.png' },
+        { id: 'myob', name: 'MYOB', color: 'bg-yellow-100 text-yellow-700', logo: '/myob_logo.jpg' },
     ];
 
     return (
@@ -1390,8 +1390,8 @@ const AccountingScreen = ({ user }) => {
                                 <div className="p-4">
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center flex-1">
-                                            <div className={`w-12 h-12 flex items-center justify-center rounded-lg mr-4 ${provider.color} font-bold text-sm`}>
-                                                {provider.name.charAt(0)}
+                                            <div className="w-12 h-12 flex items-center justify-center rounded-lg mr-4 bg-white border border-gray-200">
+                                                <img src={provider.logo} alt={`${provider.name} logo`} className="w-10 h-10 object-contain" />
                                             </div>
                                             <div className="flex-1">
                                                 <div className="font-semibold text-gray-800">{provider.name}</div>
