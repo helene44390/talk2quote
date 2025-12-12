@@ -317,7 +317,12 @@ const LoginScreen = ({ handleLogin, handleSignUp, handlePasswordReset }) => {
             <div className="w-full max-w-sm p-6 space-y-4 bg-white shadow-xl rounded-xl">
                 <AppHeader />
                 <div className="text-center -mt-2">
-                    <TypewriterText texts={["Stop Estimating. Start Quoting.", "Quote in 60 Seconds. Get Back to the Job.", "AI Voice-to-Quote: Zero Typing. Zero Stress."]} />
+                    <TypewriterText texts={[
+                        "Talk for 2 minutes. Quote's done. Beer's cold.",
+                        "Stop losing jobs to blokes who quote faster!",
+                        "From ute to quote to 'she's in your inbox, mate.",
+                        "Talk like a tradie. Quote like a legend."
+                    ]} />
                 </div>
 
                 {error && <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg text-center font-medium border border-red-200">{error}</div>}
