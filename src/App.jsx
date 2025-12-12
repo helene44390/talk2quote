@@ -45,7 +45,7 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const functions = getFunctions(app, 'asia-southeast1');
 
-const T2Q_LOGO_URL = "/LOGO1.png";
+const T2Q_LOGO_URL = "/logo1.png";
 
 const calculateQuoteTotal = (items) => {
     if (!items || !Array.isArray(items)) return 0;
