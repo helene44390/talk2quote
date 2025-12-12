@@ -4,12 +4,16 @@ const admin = require("firebase-admin");
 const logger = require("firebase-functions/logger");
 const { GoogleAuth } = require('google-auth-library');
 const nodemailer = require("nodemailer");
+// NEW IMPORTS FOR STRIPE
+const stripe = require('stripe');
 
 admin.initializeApp();
 
 const geminiApiKey = defineString("GEMINI_API_KEY");
 const emailUser = defineString("EMAIL_USER");
 const emailPassword = defineString("EMAIL_USER");
+// NEW STRIPE SECRET (must be set via CLI: firebase functions:secrets:set STRIPE_SECRET_KEY)
+const stripeSecretKey = defineString("STRIPE_SECRET_KEY");
 
 // Initialize Google Auth for Vertex AI (Uses the function's service account)
 const auth = new GoogleAuth({
@@ -23,11 +27,22 @@ exports.generateQuote = onCall({ region: DEPLOY_REGION, timeoutSeconds: 120, mem
   if (!request.auth) throw new HttpsError('unauthenticated', 'User must be logged in.');
 
   const { audioBase64, type, mimeType } = request.data;
-  
+  // NEW: Get the default items logic from the frontend request
+  const useDefaults = request.data.useDefaults || false;
+  let defaultItemsPrompt = '';
+
+  if (useDefaults && request.data.defaultItems && request.data.defaultItems.length > 0) {
+      defaultItemsPrompt = `
+        \n### DEFAULT ITEMS FOR PRICING BIASING:
+        The user has pre-set the following line items. If similar work is mentioned, try to use these descriptions, quantities, and prices:
+        ${JSON.stringify(request.data.defaultItems, null, 2)}
+      `;
+  }
+  // END NEW LOGIC
   if (type !== 'rewrite' && !audioBase64) throw new HttpsError('invalid-argument', 'No audio.');
 
-  // Using the final working model ID
-  const MODEL_NAME = "gemini-1.5-flash"; 
+  // CRITICAL FIX: Use the stable 2.5 model
+  const MODEL_NAME = "gemini-2.5-flash"; 
   const PROJECT_ID = "talk2quote-app"; 
 
   // Vertex AI URL MUST match the region
@@ -50,25 +65,27 @@ exports.generateQuote = onCall({ region: DEPLOY_REGION, timeoutSeconds: 120, mem
   } else {
       const systemContext = `
         You are an expert Australian trade estimator.
-        
+
         ### ACCENT AND TERMINOLOGY BIASING:
         1. **PRIORITIZE:** When transcribing, strongly prioritize construction terms like 'repair', 'remedial', 'brickwork', 'concrete', 'excavation' over similar sounding words (e.g., 'repair' over 'prepare', 'brick' over 'break').
         2. **ACCENTS:** The speaker may have a strong French or Australian accent. Use phonetic matching for suburbs.
-        
+
         ### ADDRESS AND TERM RULES:
         3. **ADDRESSES:** Format addresses as: "Street Number & Name, Suburb State Postcode". Prioritize NSW, VIC, QLD suburbs.
         4. **TERMS:** Expect terms like 'Reno', 'Rough in', 'GPO', 'Cornice', 'Skirting', 'Gyprock'.
 
         Return ONLY raw JSON with this structure:
-        { 
-          "clientName": "String", 
-          "clientAddress": "String", 
-          "scopeOfWork": "String", 
+        {
+          "clientName": "String",
+          "clientAddress": "String",
+          "scopeOfWork": "String",
           "items": [
             { "id": 1, "description": "String", "qty": Number, "price": Number }
-          ] 
+          ]
         }
-        If price is not mentioned, set to 0.`;
+        If price is not mentioned, set to 0.
+        ${defaultItemsPrompt}
+        `;
 
       apiBody = {
         contents: [
@@ -118,4 +135,56 @@ exports.generateQuote = onCall({ region: DEPLOY_REGION, timeoutSeconds: 120, mem
 
 exports.sendQuoteEmail = onCall({ region: DEPLOY_REGION }, async (request) => {
     return { success: true };
+});
+
+exports.createStripeCheckoutSession = onCall({ region: DEPLOY_REGION }, async (request) => {
+    if (!request.auth) throw new HttpsError('unauthenticated', 'User must be logged in.');
+
+    const { planId, priceId } = request.data;
+
+    if (!planId || !priceId) {
+        throw new HttpsError('invalid-argument', 'Missing plan or price ID.');
+    }
+
+    // Initialize Stripe with the secret key (MUST be set via CLI: firebase functions:secrets:set STRIPE_SECRET_KEY)
+    const stripeInstance = require('stripe')(stripeSecretKey.value());
+    const YOUR_DOMAIN = 'https://talk2quote-app.web.app'; // Use your live Firebase Hosting URL
+
+    try {
+        // Find or create customer
+        let customer;
+        const customers = await stripeInstance.customers.list({ email: request.auth.token.email, limit: 1 });
+        if (customers.data.length > 0) {
+            customer = customers.data[0];
+        } else {
+            customer = await stripeInstance.customers.create({
+                email: request.auth.token.email,
+                metadata: {
+                    firebaseUid: request.auth.uid
+                }
+            });
+        }
+
+        // Create Checkout Session
+        const session = await stripeInstance.checkout.sessions.create({
+            mode: 'subscription',
+            customer: customer.id,
+            line_items: [{
+                price: priceId, // Stripe Price ID for Pro/Enterprise
+                quantity: 1,
+            }],
+            success_url: `${YOUR_DOMAIN}/?status=success&session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${YOUR_DOMAIN}/?status=cancelled`,
+            metadata: {
+                firebaseUid: request.auth.uid,
+                planId: planId
+            },
+        });
+
+        return { sessionId: session.id, url: session.url };
+
+    } catch (error) {
+        console.error("Stripe Error:", error);
+        throw new HttpsError('internal', `Stripe checkout failed: ${error.message}`);
+    }
 });
