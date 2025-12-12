@@ -1983,7 +1983,7 @@ const Layout = ({ children, isMenuOpen, setIsMenuOpen, navigateTo, handleLogout 
       </header>
       <main className="flex-grow overflow-y-auto">{children}</main>
       <footer className="py-2 text-center bg-white border-t border-gray-200">
-        <p className="text-xs text-gray-500 font-medium">App Version: v3.0 (Fixed)</p>
+        <p className="text-xs text-gray-500 font-medium">App Version: {__APP_VERSION__}</p>
       </footer>
       <MenuDrawer isMenuOpen={isMenuOpen} navigateTo={navigateTo} handleLogout={handleLogout} />
       {isMenuOpen && <div className="fixed inset-0 bg-black bg-opacity-50 z-40" onClick={() => setIsMenuOpen(false)}></div>}
