@@ -26,7 +26,7 @@ import {
 import { getFunctions, httpsCallable } from "firebase/functions";
 import {
   Menu, Mic, Settings, History, Building, Check, Share2, Mail, MessageSquare,
-  Home, User, CreditCard, Save, Pencil, Phone, FileText, X, ChevronRight, Star, Shield, Gift, TrendingUp, Loader, LogOut, ArrowLeft, Printer, Upload, Download
+  Home, User, CreditCard, Save, Pencil, Phone, FileText, X, ChevronRight, Star, Shield, Gift, TrendingUp, Loader, LogOut, ArrowLeft, Printer, Upload, Download, Clipboard, Plus
 } from 'lucide-react';
 import { generatePDFBase64, downloadPDF } from './utils/pdfGenerator';
 
@@ -180,6 +180,43 @@ const AppHeader = () => (
     </div>
 );
 
+const TypewriterText = ({ texts, speed = 80, delay = 1500 }) => {
+    const [displayedText, setDisplayedText] = useState('');
+    const [textIndex, setTextIndex] = useState(0);
+    const [charIndex, setCharIndex] = useState(0);
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    useEffect(() => {
+        const currentText = texts[textIndex];
+        let timer;
+
+        if (!isDeleting && charIndex < currentText.length) {
+            timer = setTimeout(() => {
+                setDisplayedText(currentText.substring(0, charIndex + 1));
+                setCharIndex(charIndex + 1);
+            }, speed);
+        } else if (isDeleting && charIndex > 0) {
+            timer = setTimeout(() => {
+                setDisplayedText(currentText.substring(0, charIndex - 1));
+                setCharIndex(charIndex - 1);
+            }, speed / 2);
+        } else if (!isDeleting && charIndex === currentText.length) {
+            timer = setTimeout(() => setIsDeleting(true), delay);
+        } else if (isDeleting && charIndex === 0) {
+            setIsDeleting(false);
+            setTextIndex((prev) => (prev + 1) % texts.length);
+        }
+
+        return () => clearTimeout(timer);
+    }, [charIndex, isDeleting, textIndex, speed, delay, texts]);
+
+    return (
+        <p className="text-xl text-gray-600 mb-8 h-8 font-mono tracking-wider border-r-2 border-solid border-gray-600 pr-1 inline-block">
+            {displayedText}
+        </p>
+    );
+};
+
 const LoginScreen = ({ handleLogin, handleSignUp, handlePasswordReset }) => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -279,7 +316,9 @@ const LoginScreen = ({ handleLogin, handleSignUp, handlePasswordReset }) => {
         <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4">
             <div className="w-full max-w-sm p-6 space-y-4 bg-white shadow-xl rounded-xl">
                 <AppHeader />
-                <h1 className="handwriting-title text-center text-3xl text-gray-800 mx-auto -mt-2" style={{ fontFamily: "'Caveat', cursive" }}>Turn Recordings Into Quotes Instantly</h1>
+                <div className="text-center -mt-2">
+                    <TypewriterText texts={["Stop Estimating. Start Quoting.", "Quote in 60 Seconds. Get Back to the Job.", "AI Voice-to-Quote: Zero Typing. Zero Stress."]} />
+                </div>
 
                 {error && <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg text-center font-medium border border-red-200">{error}</div>}
 
@@ -1096,7 +1135,7 @@ const SecurityScreen = ({ navigateTo, user }) => {
     );
 };
 
-const SettingsScreen = ({ navigateTo, user }) => {
+const SettingsScreen = ({ navigateTo, user, referralCode }) => {
     const [taxRate, setTaxRate] = useState('10');
     const [notificationsEnabled, setNotificationsEnabled] = useState(true);
     const [loading, setLoading] = useState(true);
@@ -1206,6 +1245,26 @@ const SettingsScreen = ({ navigateTo, user }) => {
                     >
                         <div className={`w-5 h-5 bg-white rounded-full shadow-md transform transition duration-200 ${notificationsEnabled ? 'translate-x-4' : 'translate-x-0'}`}></div>
                     </div>
+                </div>
+            </div>
+
+            <h3 className="font-bold text-gray-600 mt-6 mb-2 ml-1 text-sm uppercase">Referral Program</h3>
+            <div className="bg-white p-6 rounded-xl shadow-lg">
+                <p className="text-sm text-gray-600 mb-4">Share your unique code to earn benefits (e.g., free month).</p>
+                <div className="flex items-center justify-between bg-gray-100 p-3 rounded-lg border border-dashed border-gray-300">
+                    <span className="font-mono text-lg text-green-700 font-bold">{referralCode || 'Loading...'}</span>
+                    <button
+                        onClick={() => {
+                            if (referralCode) {
+                                navigator.clipboard.writeText(referralCode);
+                                alert('Code copied!');
+                            }
+                        }}
+                        disabled={!referralCode}
+                        className="py-1 px-3 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <Clipboard size={16} className="mr-1" /> Copy
+                    </button>
                 </div>
             </div>
         </div>
@@ -1805,52 +1864,72 @@ const QuoteItemsSettingsScreen = ({ user, defaultItems, setDefaultItems }) => {
     );
 };
 
-const SubscriptionScreen = ({ user }) => {
-    const [subscription, setSubscription] = useState(null);
-    const [loading, setLoading] = useState(true);
+const SubscriptionCard = ({ title, price, features, isPro = false }) => (
+    <div className={`p-6 rounded-xl shadow-xl border-4 ${isPro ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white'} transform hover:scale-[1.02] transition duration-300`}>
+        <h3 className="text-2xl font-bold mb-2 text-gray-800">{title}</h3>
+        <p className={`text-4xl font-extrabold ${isPro ? 'text-blue-600' : 'text-gray-800'} mb-4`}>{price}</p>
+        <ul className="space-y-3 mb-6">
+            {features.map((f, i) => (
+                <li key={i} className="flex items-center text-gray-700">
+                    <Check size={18} className={`mr-2 ${isPro ? 'text-blue-500' : 'text-green-500'}`} />
+                    {f}
+                </li>
+            ))}
+        </ul>
+        <button className={`w-full py-3 font-semibold rounded-lg ${isPro ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'}`}>
+            {isPro ? "Go Pro Now" : "Select Plan"}
+        </button>
+    </div>
+);
 
-    useEffect(() => {
-        if (user) {
-            const fetchSub = async () => {
-                const subRef = doc(db, 'users', user.uid, 'profile', 'details');
-                const snap = await getDoc(subRef);
-                if (snap.exists()) setSubscription(snap.data());
-                setLoading(false);
-            };
-            fetchSub();
-        }
-    }, [user]);
-
-    const handleUpgrade = () => {
-        alert('Payment gateway integration coming soon.');
-    };
-
-    if (loading) return <div className="p-4 flex justify-center"><Loader className="animate-spin text-gray-500"/></div>;
-
-    const planType = subscription?.plan_type || 'trial';
-
+const SubscriptionScreen = ({ navigateTo }) => {
     return (
-        <div className="p-4 bg-gray-50 h-full overflow-y-auto">
-            <h2 className="text-2xl font-bold text-gray-800 mb-2">Subscription</h2>
-            <div className="bg-white p-6 rounded-xl shadow-lg border-2 border-blue-100 mb-6">
-                <div className="flex justify-between items-start mb-4">
-                    <div>
-                        <h3 className="text-lg font-bold text-blue-800">{planType === 'pro' ? 'Pro Plan' : 'Free Trial'}</h3>
-                        <span className="text-xs px-2 py-1 rounded-full font-bold bg-green-100 text-green-800">ACTIVE</span>
-                    </div>
-                    <Star className="text-yellow-400 fill-current" size={24} />
-                </div>
-                <div className="text-3xl font-bold text-gray-900 mb-1">{planType === 'pro' ? '$29/mo' : 'Free'}</div>
-                <button
-                    onClick={planType === 'trial' ? handleUpgrade : undefined}
-                    className="w-full py-3 bg-blue-600 text-white font-bold rounded-lg mt-4 flex items-center justify-center"
-                >
-                    {planType === 'trial' ? 'Upgrade to Pro' : 'Manage Subscription'}
-                </button>
+        <div className="p-4 bg-gray-50 h-full overflow-y-auto pb-20">
+            <h2 className="text-3xl font-bold text-gray-800 mb-6 border-b pb-3">Subscription Plans</h2>
+            <div className="space-y-6">
+                <SubscriptionCard
+                    title="Free Trial"
+                    price="Free"
+                    features={["10 Quotes Limit", "Basic Quote Generation", "Email Support"]}
+                />
+                <SubscriptionCard
+                    title="Pro Account"
+                    price="$29/month"
+                    features={["Unlimited Quotes", "Default Item Lines", "Accent Biasing (AI Tuning)", "Priority Support"]}
+                    isPro={true}
+                />
+                <SubscriptionCard
+                    title="Enterprise"
+                    price="$69/month"
+                    features={["Unlimited Quotes", "Default Item Lines", "Multiple User Seats", "Dedicated Account Manager"]}
+                />
             </div>
+            <p className="mt-8 text-center text-sm text-gray-500">All plans billed monthly. Cancel anytime.</p>
         </div>
     );
 };
+
+const LegalScreen = () => (
+    <div className="p-4 bg-gray-50 h-full overflow-y-auto pb-20">
+        <h2 className="text-2xl font-bold text-gray-800 mb-4">Privacy Policy & Terms</h2>
+        <div className="bg-white p-6 rounded-xl shadow-lg">
+            <h3 className="text-xl font-semibold mb-2">Privacy Policy (Effective 2025)</h3>
+            <p className="text-gray-600 mb-4">We collect audio data for the sole purpose of generating quotes via the Vertex AI service. User quotes and company data are stored securely on your dedicated Firebase Firestore instance. We do not sell or share your data.</p>
+            <h3 className="text-xl font-semibold mb-2 mt-6">Terms of Service</h3>
+            <p className="text-gray-600">Talk2Quote is provided "as is." While we strive for accuracy, the final responsibility for quote accuracy rests with the user. Our liability is limited to the subscription fee paid.</p>
+        </div>
+    </div>
+);
+
+const AboutScreen = () => (
+    <div className="p-4 bg-gray-50 h-full overflow-y-auto pb-20">
+        <h2 className="text-2xl font-bold text-gray-800 mb-4">About Talk2Quote</h2>
+        <div className="bg-white p-6 rounded-xl shadow-lg">
+            <p className="text-gray-600 mb-4">Built by Helene, a Sydney-based entrepreneur (ABCIVIL, Remedial Bricklaying) to solve the time sink of manual estimating. Talk2Quote uses advanced Google AI to instantly convert spoken job descriptions into structured quotes, saving tradies hours every week.</p>
+            <p className="text-sm text-gray-500 mt-4">Version: v5.0.27 (Asia-Southeast Stability)</p>
+        </div>
+    </div>
+);
 
 const MenuDrawer = ({ isMenuOpen, navigateTo, handleLogout }) => (
     <div className={`fixed top-0 left-0 h-full w-64 bg-white shadow-2xl z-50 transform transition-transform duration-300 ${isMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
@@ -1879,7 +1958,7 @@ const Layout = ({ children, isMenuOpen, setIsMenuOpen, navigateTo, handleLogout 
           <button onClick={() => setIsMenuOpen(true)} className="p-2 rounded-full text-blue-600 hover:bg-blue-50" aria-label="Open Menu">
             <Menu size={32} />
           </button>
-          <div className="flex justify-center">
+          <div className="flex justify-center cursor-pointer" onClick={() => navigateTo('main')}>
             <img src={T2Q_LOGO_URL} alt="Talk2Quote App" className="h-24 object-contain" />
           </div>
           <button onClick={() => navigateTo('referral')} className="p-2 rounded-full text-purple-600 hover:bg-purple-50">
@@ -1946,6 +2025,7 @@ const App = () => {
 
   const [previousQuotes, setPreviousQuotes] = useState([]);
   const [defaultItems, setDefaultItems] = useState([]);
+  const [referralCode, setReferralCode] = useState('');
 
   useEffect(() => {
     const initAuth = async () => {
@@ -2015,6 +2095,30 @@ const App = () => {
     };
 
     loadDefaultItems();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const loadReferralCode = async () => {
+      try {
+        const settingsRef = doc(db, 'users', user.uid, 'settings', 'referral');
+        const settingsSnap = await getDoc(settingsRef);
+
+        let code;
+        if (settingsSnap.exists() && settingsSnap.data().code) {
+          code = settingsSnap.data().code;
+        } else {
+          code = user.uid.substring(0, 8).toUpperCase();
+          await setDoc(settingsRef, { code }, { merge: true });
+        }
+        setReferralCode(code);
+      } catch (error) {
+        console.error('Error loading/generating referral code:', error);
+      }
+    };
+
+    loadReferralCode();
   }, [user]);
 
   const isClientInfoSet = mockQuote.clientEmail && mockQuote.clientEmail.trim() !== '';
@@ -2595,10 +2699,10 @@ const App = () => {
         />;
         break;
       case 'subscription':
-        content = <SubscriptionScreen user={user} />;
+        content = <SubscriptionScreen navigateTo={navigateTo} />;
         break;
       case 'settings':
-        content = <SettingsScreen navigateTo={navigateTo} user={user} />;
+        content = <SettingsScreen navigateTo={navigateTo} user={user} referralCode={referralCode} />;
         break;
       case 'profile':
         content = <ProfileScreen navigateTo={navigateTo} user={user} />;
@@ -2611,6 +2715,12 @@ const App = () => {
         break;
       case 'accounting':
         content = <AccountingScreen user={user} />;
+        break;
+      case 'legal':
+        content = <LegalScreen />;
+        break;
+      case 'about':
+        content = <AboutScreen />;
         break;
       default:
         content = <MainScreen
